@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.16.1", features = ["extension-module"] }
+chrono = "0.4"
