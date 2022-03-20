@@ -96,6 +96,11 @@ fn try_get_offset(tz: &str) -> PyResult<FixedOffset> {
     if tz.to_lowercase() == "local" {
         Ok(*LOCAL_OFFSET)
     } else {
+        let tz = if tz.to_lowercase() == "utc" {
+            "UTC"
+        } else {
+            tz
+        };
         let tz = Tz::from_str(tz).map_err(exceptions::PyValueError::new_err)?;
         Ok(tz.ymd(1970, 1, 1).offset().fix())
     }
