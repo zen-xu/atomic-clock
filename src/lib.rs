@@ -8,7 +8,7 @@ use chrono_tz::Tz;
 use pyo3::{exceptions, prelude::*, types::PyType};
 
 lazy_static! {
-    static ref DEFAULT_OFFSET: FixedOffset = {
+    static ref LOCAL_OFFSET: FixedOffset = {
         let now = Local::now();
         now.offset().fix()
     };
@@ -92,6 +92,6 @@ fn try_get_offset(tz: Option<&str>) -> PyResult<FixedOffset> {
             let tz = Tz::from_str(tz).map_err(exceptions::PyValueError::new_err)?;
             Ok(tz.ymd(1970, 1, 1).offset().fix())
         }
-        None => Ok(*DEFAULT_OFFSET),
+        None => Ok(*LOCAL_OFFSET),
     }
 }
