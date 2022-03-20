@@ -27,7 +27,7 @@ fn spear(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[pyclass]
 #[pyo3(
-    text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tz = None)"
+    text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tz = \"local\")"
 )]
 struct Spear {
     datetime: DateTime<FixedOffset>,
@@ -37,7 +37,13 @@ struct Spear {
 #[allow(clippy::too_many_arguments)]
 impl Spear {
     #[new]
-    #[args(hour = "0", minute = "0", second = "0", microsecond = "0", tz = "None")]
+    #[args(
+        hour = "0",
+        minute = "0",
+        second = "0",
+        microsecond = "0",
+        tz = "\"local\""
+    )]
     fn new(
         year: i32,
         month: u32,
@@ -46,7 +52,7 @@ impl Spear {
         minute: u32,
         second: u32,
         microsecond: u32,
-        tz: Option<&str>,
+        tz: &str,
     ) -> PyResult<Self> {
         let offset = try_get_offset(tz)?;
 
@@ -67,9 +73,9 @@ impl Spear {
     }
 
     #[classmethod]
-    #[args(tz = "None")]
-    #[pyo3(text_signature = "(tz = None)")]
-    fn now(_cls: &PyType, tz: Option<&str>) -> PyResult<Self> {
+    #[args(tz = "\"local\"")]
+    #[pyo3(text_signature = "(tz = \"local\")")]
+    fn now(_cls: &PyType, tz: &str) -> PyResult<Self> {
         let now = Local::now();
         let offset = try_get_offset(tz)?;
         let datetime = offset.from_utc_datetime(&now.naive_utc());
@@ -86,12 +92,11 @@ impl Spear {
     }
 }
 
-fn try_get_offset(tz: Option<&str>) -> PyResult<FixedOffset> {
-    match tz {
-        Some(tz) => {
-            let tz = Tz::from_str(tz).map_err(exceptions::PyValueError::new_err)?;
-            Ok(tz.ymd(1970, 1, 1).offset().fix())
-        }
-        None => Ok(*LOCAL_OFFSET),
+fn try_get_offset(tz: &str) -> PyResult<FixedOffset> {
+    if tz.to_lowercase() == "local" {
+        Ok(*LOCAL_OFFSET)
+    } else {
+        let tz = Tz::from_str(tz).map_err(exceptions::PyValueError::new_err)?;
+        Ok(tz.ymd(1970, 1, 1).offset().fix())
     }
 }
