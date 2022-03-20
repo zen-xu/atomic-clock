@@ -95,6 +95,11 @@ impl Spear {
 fn try_get_offset(tz: &str) -> PyResult<FixedOffset> {
     if tz.to_lowercase() == "local" {
         Ok(*LOCAL_OFFSET)
+    } else if tz.contains(':') {
+        let tmp_datetime = format!("1970-01-01T00:00:00{}", tz);
+        let tmp_datetime = DateTime::parse_from_rfc3339(&tmp_datetime)
+            .map_err(|_e| exceptions::PyValueError::new_err("invalid timezone offset"))?;
+        Ok(*tmp_datetime.offset())
     } else {
         let tz = if tz.to_lowercase() == "utc" {
             "UTC"
