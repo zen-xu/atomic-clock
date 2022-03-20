@@ -42,7 +42,7 @@ impl Spear {
         minute = "0",
         second = "0",
         microsecond = "0",
-        tz = "\"local\""
+        tz = "\"UTC\""
     )]
     fn new(
         year: i32,
