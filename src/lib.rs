@@ -3,7 +3,7 @@ use std::str::FromStr;
 #[macro_use]
 extern crate lazy_static;
 
-use chrono::{DateTime, FixedOffset, Local, Offset, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, LocalResult, Offset, TimeZone, Utc};
 use chrono_tz::Tz;
 use pyo3::{exceptions, prelude::*, types::PyType};
 
@@ -55,13 +55,18 @@ impl Spear {
         tz: &str,
     ) -> PyResult<Self> {
         let offset = try_get_offset(tz)?;
-
         let datetime =
             offset
-                .ymd(year, month, day)
-                .and_hms_micro(hour, minute, second, microsecond);
+                .ymd_opt(year, month, day)
+                .and_hms_micro_opt(hour, minute, second, microsecond);
 
-        Ok(Self { datetime })
+        if matches!(&datetime, LocalResult::None) {
+            return Err(exceptions::PyValueError::new_err("invalid datetime"));
+        }
+
+        Ok(Self {
+            datetime: datetime.unwrap(),
+        })
     }
 
     fn __repr__(&self) -> String {
