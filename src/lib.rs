@@ -122,6 +122,23 @@ impl AtomicClock {
 
         Ok(Self { datetime })
     }
+
+    #[classmethod]
+    #[pyo3(text_signature = "(timestamp)")]
+    fn utcfromtimestamp(_cls: &PyType, timestamp: f64) -> PyResult<Self> {
+        let mut timestamp = Decimal::from_f64(timestamp).unwrap();
+        if timestamp.scale() > 0 {
+            timestamp.set_scale(6).unwrap();
+        }
+        let secs = timestamp.floor();
+        let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
+        let datetime = (*UTC_OFFSET).from_utc_datetime(&NaiveDateTime::from_timestamp(
+            secs.to_i64().unwrap(),
+            nsecs.to_u32().unwrap(),
+        ));
+
+        Ok(Self { datetime })
+    }
 }
 
 #[derive(FromPyObject)]
