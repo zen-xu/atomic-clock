@@ -80,6 +80,7 @@ repos:
     hooks:
       - id: mypy
         pass_filenames: false
+        args: ["atomic_clock"]
 
   - repo: https://github.com/pre-commit/pre-commit
     rev: v2.17.0
