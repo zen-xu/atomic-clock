@@ -3,12 +3,14 @@ use std::{ops::Mul, str::FromStr};
 #[macro_use]
 extern crate lazy_static;
 
-use chrono::{DateTime, FixedOffset, Local, LocalResult, NaiveDateTime, Offset, TimeZone, Utc};
+use chrono::{
+    DateTime, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone, Utc,
+};
 use chrono_tz::Tz;
 use pyo3::{
     exceptions,
     prelude::*,
-    types::{PyDateTime, PyType, PyTzInfo},
+    types::{PyDate, PyDateAccess, PyDateTime, PyTimeAccess, PyType, PyTzInfo},
 };
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
@@ -138,6 +140,59 @@ impl AtomicClock {
         ));
 
         Ok(Self { datetime })
+    }
+
+    #[classmethod]
+    #[args(tzinfo = "None")]
+    #[pyo3(text_signature = "(dt, tzinfo = \"None\")")]
+    fn fromdatetime(
+        _cls: &PyType,
+        py: Python,
+        dt: &PyDateTime,
+        tzinfo: Option<TzInfo>,
+    ) -> PyResult<Self> {
+        let offset = {
+            let tzinfo = if let Some(tzinfo) = tzinfo {
+                tzinfo
+            } else {
+                let tz = dt.getattr("tzinfo")?;
+                if let Ok(tz) = tz.extract::<&PyTzInfo>() {
+                    TzInfo::Tz(tz)
+                } else {
+                    TzInfo::String("UTC".to_string())
+                }
+            };
+            tzinfo.try_get_offset(py)?
+        };
+
+        let naive = NaiveDate::from_ymd(dt.get_year(), dt.get_month() as u32, dt.get_day() as u32)
+            .and_hms_micro(
+                dt.get_hour() as u32,
+                dt.get_minute() as u32,
+                dt.get_second() as u32,
+                dt.get_microsecond(),
+            );
+
+        Ok(Self {
+            datetime: offset.from_local_datetime(&naive).unwrap(),
+        })
+    }
+
+    #[classmethod]
+    #[args(tzinfo = "TzInfo::String(String::from(\"UTC\"))")]
+    #[pyo3(text_signature = "(date, tzinfo = \"UTC\")")]
+    fn fromdate(_cls: &PyType, py: Python, date: &PyDate, tzinfo: TzInfo) -> PyResult<Self> {
+        let offset = tzinfo.try_get_offset(py)?;
+        let naive = NaiveDate::from_ymd(
+            date.get_year(),
+            date.get_month() as u32,
+            date.get_day() as u32,
+        )
+        .and_hms_micro(0, 0, 0, 0);
+
+        Ok(Self {
+            datetime: offset.from_utc_datetime(&naive),
+        })
     }
 }
 

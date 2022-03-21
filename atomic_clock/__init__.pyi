@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import tzinfo
+import datetime as dt
 
 class AtomicClock:
     """An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
@@ -41,10 +41,10 @@ class AtomicClock:
         minute: int = 0,
         second: int = 0,
         microsecond: int = 0,
-        tzinfo: str | tzinfo = "local",
+        tzinfo: str | dt.tzinfo = "local",
     ) -> None: ...
     @classmethod
-    def now(cls, tzinfo: str | tzinfo = "local") -> AtomicClock:
+    def now(cls, tzinfo: str | dt.tzinfo = "local") -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing "now" in the given
         timezone.
 
@@ -75,7 +75,7 @@ class AtomicClock:
     def fromtimestamp(
         cls,
         timestamp: float,
-        tzinfo: str | tzinfo = "local",
+        tzinfo: str | dt.tzinfo = "local",
     ) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a timestamp, converted to
         the given timezone.
@@ -99,4 +99,45 @@ class AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a timestamp in UTC time
 
         :param timestamp: an float that converts to.
+        """
+    @classmethod
+    def fromdatetime(
+        cls, dt: dt.datetime, tzinfo: str | dt.tzinfo = "utc"
+    ) -> AtomicClock:
+        """Constructs an :class:`atomic_clock <atomic_clock.AtomicClock>` object from a ``datetime`` and
+        optional replacement timezone.
+
+        :param dt: the ``datetime``
+        :param tzinfo: (optional) A :ref:`timezone expression <tz-expr>`.  Defaults to ``dt``'s
+            timezone, or UTC if naive.
+
+        .. _tz-expr:
+
+        Recognized timezone expressions:
+            - A ``tzinfo`` object (note: very slow).
+            - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
+            - A ``str`` in ISO 8601 style, as in '+07:00'.
+            - A ``str``, one of the following:  'local', 'utc', 'UTC'.
+
+        Usage::
+            >>> dt
+            datetime.datetime(2022, 3, 22, 0, 39, 2, 316809, tzinfo=tzfile('/usr/share/zoneinfo/Asia/Shanghai'))
+            >>> AtomicClock.fromdatetime(dt)
+            <AtomicClock [2022-03-22T00:39:02.316809+08:00]>
+        """
+    @classmethod
+    def fromdate(cls, dt: dt.date, tzinfo: str | dt.tzinfo = "utc") -> AtomicClock:
+        """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a ``date`` and optional
+        replacement timezone.  All time values are set to 0.
+
+        :param date: the ``date``
+        :param tzinfo: (optional) A :ref:`timezone expression <tz-expr>`.  Defaults to UTC.
+
+        .. _tz-expr:
+
+        Recognized timezone expressions:
+            - A ``tzinfo`` object (note: very slow).
+            - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
+            - A ``str`` in ISO 8601 style, as in '+07:00'.
+            - A ``str``, one of the following:  'local', 'utc', 'UTC'.
         """
