@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import tzinfo
+
 class AtomicClock:
     """An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
 
@@ -18,6 +20,7 @@ class AtomicClock:
     .. _tz-expr:
 
     Recognized timezone expressions:
+        - A ``tzinfo`` object.
         - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Europe/Berlin'.
         - A ``str`` in ISO 8601 style, as in '+07:00'.
         - A ``str``, one of the following:  'local', 'utc', 'UTC'.
@@ -38,10 +41,10 @@ class AtomicClock:
         minute: int = 0,
         second: int = 0,
         microsecond: int = 0,
-        tzinfo: str = "local",
+        tzinfo: str | tzinfo = "local",
     ) -> None: ...
     @classmethod
-    def now(cls, tzinfo: str = "local") -> AtomicClock:
+    def now(cls, tzinfo: str | tzinfo = "local") -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing "now" in the given
         timezone.
 

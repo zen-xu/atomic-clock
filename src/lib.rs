@@ -5,7 +5,11 @@ extern crate lazy_static;
 
 use chrono::{DateTime, FixedOffset, Local, LocalResult, Offset, TimeZone, Utc};
 use chrono_tz::Tz;
-use pyo3::{exceptions, prelude::*, types::PyType};
+use pyo3::{
+    exceptions,
+    prelude::*,
+    types::{PyDateTime, PyType, PyTzInfo},
+};
 
 lazy_static! {
     static ref LOCAL_OFFSET: FixedOffset = {
@@ -42,9 +46,10 @@ impl AtomicClock {
         minute = "0",
         second = "0",
         microsecond = "0",
-        tzinfo = "\"UTC\""
+        tzinfo = "TzInfo::String(String::from(\"UTC\"))"
     )]
     fn new(
+        py: Python,
         year: i32,
         month: u32,
         day: u32,
@@ -52,9 +57,9 @@ impl AtomicClock {
         minute: u32,
         second: u32,
         microsecond: u32,
-        tzinfo: &str,
+        tzinfo: TzInfo,
     ) -> PyResult<Self> {
-        let offset = try_get_offset(tzinfo)?;
+        let offset = tzinfo.try_get_offset(py)?;
         let datetime =
             offset
                 .ymd_opt(year, month, day)
@@ -78,11 +83,20 @@ impl AtomicClock {
     }
 
     #[classmethod]
-    #[args(tzinfo = "\"local\"")]
+    fn demo(_cls: &PyType, py: Python, tzinfo: Option<&PyTzInfo>) -> PyResult<PyObject> {
+        let tzinfo = tzinfo.unwrap().to_object(py);
+        let datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None)?;
+        tzinfo
+            .call_method(py, "utcoffset", (datetime,), None)?
+            .getattr(py, "seconds")
+    }
+
+    #[classmethod]
+    #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
-    fn now(_cls: &PyType, tzinfo: &str) -> PyResult<Self> {
+    fn now<'p>(_cls: &PyType, py: Python<'p>, tzinfo: TzInfo) -> PyResult<Self> {
         let now = Local::now();
-        let offset = try_get_offset(tzinfo)?;
+        let offset = tzinfo.try_get_offset(py)?;
         let datetime = offset.from_utc_datetime(&now.naive_utc());
         Ok(Self { datetime })
     }
@@ -96,21 +110,44 @@ impl AtomicClock {
     }
 }
 
-fn try_get_offset(tzinfo: &str) -> PyResult<FixedOffset> {
-    if tzinfo.to_lowercase() == "local" {
-        Ok(*LOCAL_OFFSET)
-    } else if tzinfo.contains(':') {
-        let tmp_datetime = format!("1970-01-01T00:00:00{}", tzinfo);
-        let tmp_datetime = DateTime::parse_from_rfc3339(&tmp_datetime)
-            .map_err(|_e| exceptions::PyValueError::new_err("invalid timezone offset"))?;
-        Ok(*tmp_datetime.offset())
-    } else {
-        let tzinfo = if tzinfo.to_lowercase() == "utc" {
-            "UTC"
-        } else {
-            tzinfo
-        };
-        let tz = Tz::from_str(tzinfo).map_err(exceptions::PyValueError::new_err)?;
-        Ok(tz.ymd(1970, 1, 1).offset().fix())
+#[derive(FromPyObject)]
+enum TzInfo<'p> {
+    String(String),
+    Tz(&'p PyTzInfo),
+}
+
+impl TzInfo<'_> {
+    fn try_get_offset(self, py: Python) -> PyResult<FixedOffset> {
+        match self {
+            Self::String(ref tzinfo) => {
+                if tzinfo.to_lowercase() == "local" {
+                    Ok(*LOCAL_OFFSET)
+                } else if tzinfo.contains(':') {
+                    let tmp_datetime = format!("1970-01-01T00:00:00{}", tzinfo);
+                    let tmp_datetime =
+                        DateTime::parse_from_rfc3339(&tmp_datetime).map_err(|_e| {
+                            exceptions::PyValueError::new_err("invalid timezone offset")
+                        })?;
+                    Ok(*tmp_datetime.offset())
+                } else {
+                    let tzinfo = if tzinfo.to_lowercase() == "utc" {
+                        "UTC"
+                    } else {
+                        tzinfo
+                    };
+                    let tz = Tz::from_str(tzinfo).map_err(exceptions::PyValueError::new_err)?;
+                    Ok(tz.ymd(1970, 1, 1).offset().fix())
+                }
+            }
+            Self::Tz(tzinfo) => {
+                let tzinfo = tzinfo.to_object(py);
+                let dummy_datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None)?;
+                let offset = tzinfo
+                    .call_method(py, "utcoffset", (dummy_datetime,), None)?
+                    .getattr(py, "seconds")?;
+                let offset: i32 = offset.extract(py)?;
+                Ok(FixedOffset::east(offset))
+            }
+        }
     }
 }
