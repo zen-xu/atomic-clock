@@ -14,3 +14,4 @@ pyo3 = { version = "0.16.1", features = ["extension-module"] }
 chrono = "0.4"
 chrono-tz = "0.6"
 lazy_static = "1"
+rust_decimal = "1.22"

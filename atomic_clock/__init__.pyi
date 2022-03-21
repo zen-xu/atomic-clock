@@ -71,3 +71,23 @@ class AtomicClock:
             >>> AtomicClock.utcnow()
             <AtomicClock [2022-03-21T04:58:42.796864+00:00]>
         """
+    @classmethod
+    def fromtimestamp(
+        cls,
+        timestamp: float,
+        tzinfo: str | tzinfo = "local",
+    ) -> AtomicClock:
+        """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a timestamp, converted to
+        the given timezone.
+
+        :param timestamp: an float that converts to either.
+        :param tzinfo: (optional) A timezone expression. Defaults to local time.
+
+        .. _tz-expr:
+
+        Recognized timezone expressions:
+            - A ``tzinfo`` object (note: very slow).
+            - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
+            - A ``str`` in ISO 8601 style, as in '+07:00'.
+            - A ``str``, one of the following:  'local', 'utc', 'UTC'.
+        """

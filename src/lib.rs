@@ -1,14 +1,18 @@
-use std::str::FromStr;
+use std::{ops::Mul, str::FromStr};
 
 #[macro_use]
 extern crate lazy_static;
 
-use chrono::{DateTime, FixedOffset, Local, LocalResult, Offset, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, LocalResult, NaiveDateTime, Offset, TimeZone, Utc};
 use chrono_tz::Tz;
 use pyo3::{
     exceptions,
     prelude::*,
     types::{PyDateTime, PyType, PyTzInfo},
+};
+use rust_decimal::{
+    prelude::{FromPrimitive, ToPrimitive},
+    Decimal,
 };
 
 lazy_static! {
@@ -97,6 +101,25 @@ impl AtomicClock {
         let now = Utc::now();
         let offset = *UTC_OFFSET;
         let datetime = offset.from_utc_datetime(&now.naive_utc());
+        Ok(Self { datetime })
+    }
+
+    #[classmethod]
+    #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
+    #[pyo3(text_signature = "(timestamp, tzinfo = \"local\")")]
+    fn fromtimestamp(_cls: &PyType, py: Python, timestamp: f64, tzinfo: TzInfo) -> PyResult<Self> {
+        let offset = tzinfo.try_get_offset(py)?;
+        let mut timestamp = Decimal::from_f64(timestamp).unwrap();
+        if timestamp.scale() > 0 {
+            timestamp.set_scale(6).unwrap();
+        }
+        let secs = timestamp.floor();
+        let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
+        let datetime = offset.from_utc_datetime(&NaiveDateTime::from_timestamp(
+            secs.to_i64().unwrap(),
+            nsecs.to_u32().unwrap(),
+        ));
+
         Ok(Self { datetime })
     }
 }
