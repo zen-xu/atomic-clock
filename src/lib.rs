@@ -24,7 +24,7 @@ lazy_static! {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AtomicClock>()?;
     Ok(())
 }

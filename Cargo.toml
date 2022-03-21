@@ -6,7 +6,7 @@ description = "⚛️ Better, Faster dates & times for Python"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "atomic_clock"
+name = "_atomic_clock"
 crate-type = ["cdylib"]
 
 [dependencies]
