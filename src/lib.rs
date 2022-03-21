@@ -83,15 +83,6 @@ impl AtomicClock {
     }
 
     #[classmethod]
-    fn demo(_cls: &PyType, py: Python, tzinfo: Option<&PyTzInfo>) -> PyResult<PyObject> {
-        let tzinfo = tzinfo.unwrap().to_object(py);
-        let datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None)?;
-        tzinfo
-            .call_method(py, "utcoffset", (datetime,), None)?
-            .getattr(py, "seconds")
-    }
-
-    #[classmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
     fn now(_cls: &PyType, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
