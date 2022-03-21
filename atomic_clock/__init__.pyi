@@ -20,8 +20,8 @@ class AtomicClock:
     .. _tz-expr:
 
     Recognized timezone expressions:
-        - A ``tzinfo`` object.
-        - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Europe/Berlin'.
+        - A ``tzinfo`` object (note: very slow).
+        - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
         - A ``str`` in ISO 8601 style, as in '+07:00'.
         - A ``str``, one of the following:  'local', 'utc', 'UTC'.
 
@@ -49,6 +49,14 @@ class AtomicClock:
         timezone.
 
         :param tzinfo: (optional) A timezone expression. Defaults to local time.
+
+        .. _tz-expr:
+
+        Recognized timezone expressions:
+            - A ``tzinfo`` object (note: very slow).
+            - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
+            - A ``str`` in ISO 8601 style, as in '+07:00'.
+            - A ``str``, one of the following:  'local', 'utc', 'UTC'.
 
         Usage::
             >>> AtomicClock.now('Asia/Shanghai')
