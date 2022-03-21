@@ -78,7 +78,7 @@ impl AtomicClock {
     }
 
     #[classmethod]
-    #[args(tz = "\"local\"")]
+    #[args(tzinfo = "\"local\"")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
     fn now(_cls: &PyType, tzinfo: &str) -> PyResult<Self> {
         let now = Local::now();
