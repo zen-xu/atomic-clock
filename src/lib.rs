@@ -27,7 +27,7 @@ fn spear(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[pyclass]
 #[pyo3(
-    text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tz = \"local\")"
+    text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"local\")"
 )]
 struct Spear {
     datetime: DateTime<FixedOffset>,
@@ -42,7 +42,7 @@ impl Spear {
         minute = "0",
         second = "0",
         microsecond = "0",
-        tz = "\"UTC\""
+        tzinfo = "\"UTC\""
     )]
     fn new(
         year: i32,
@@ -52,9 +52,9 @@ impl Spear {
         minute: u32,
         second: u32,
         microsecond: u32,
-        tz: &str,
+        tzinfo: &str,
     ) -> PyResult<Self> {
-        let offset = try_get_offset(tz)?;
+        let offset = try_get_offset(tzinfo)?;
         let datetime =
             offset
                 .ymd_opt(year, month, day)
@@ -79,16 +79,15 @@ impl Spear {
 
     #[classmethod]
     #[args(tz = "\"local\"")]
-    #[pyo3(text_signature = "(tz = \"local\")")]
-    fn now(_cls: &PyType, tz: &str) -> PyResult<Self> {
+    #[pyo3(text_signature = "(tzinfo = \"local\")")]
+    fn now(_cls: &PyType, tzinfo: &str) -> PyResult<Self> {
         let now = Local::now();
-        let offset = try_get_offset(tz)?;
+        let offset = try_get_offset(tzinfo)?;
         let datetime = offset.from_utc_datetime(&now.naive_utc());
         Ok(Self { datetime })
     }
 
     #[classmethod]
-    #[args(tz = "None")]
     fn utcnow(_cls: &PyType) -> PyResult<Self> {
         let now = Utc::now();
         let offset = *UTC_OFFSET;
@@ -97,21 +96,21 @@ impl Spear {
     }
 }
 
-fn try_get_offset(tz: &str) -> PyResult<FixedOffset> {
-    if tz.to_lowercase() == "local" {
+fn try_get_offset(tzinfo: &str) -> PyResult<FixedOffset> {
+    if tzinfo.to_lowercase() == "local" {
         Ok(*LOCAL_OFFSET)
-    } else if tz.contains(':') {
-        let tmp_datetime = format!("1970-01-01T00:00:00{}", tz);
+    } else if tzinfo.contains(':') {
+        let tmp_datetime = format!("1970-01-01T00:00:00{}", tzinfo);
         let tmp_datetime = DateTime::parse_from_rfc3339(&tmp_datetime)
             .map_err(|_e| exceptions::PyValueError::new_err("invalid timezone offset"))?;
         Ok(*tmp_datetime.offset())
     } else {
-        let tz = if tz.to_lowercase() == "utc" {
+        let tzinfo = if tzinfo.to_lowercase() == "utc" {
             "UTC"
         } else {
-            tz
+            tzinfo
         };
-        let tz = Tz::from_str(tz).map_err(exceptions::PyValueError::new_err)?;
+        let tz = Tz::from_str(tzinfo).map_err(exceptions::PyValueError::new_err)?;
         Ok(tz.ymd(1970, 1, 1).offset().fix())
     }
 }
