@@ -94,7 +94,7 @@ impl AtomicClock {
     #[classmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
-    fn now<'p>(_cls: &PyType, py: Python<'p>, tzinfo: TzInfo) -> PyResult<Self> {
+    fn now(_cls: &PyType, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
         let now = Local::now();
         let offset = tzinfo.try_get_offset(py)?;
         let datetime = offset.from_utc_datetime(&now.naive_utc());
