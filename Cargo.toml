@@ -1,12 +1,12 @@
 [package]
-name = "spear"
+name = "atomic-clock"
 version = "0.1.0"
 edition = "2021"
-description = "🔱 Better, Faster dates & times for Python"
+description = "⚛️ Better, Faster dates & times for Python"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "spear"
+name = "atomic_clock"
 crate-type = ["cdylib"]
 
 [dependencies]

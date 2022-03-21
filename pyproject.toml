@@ -1,5 +1,5 @@
 [project]
-name = "py-spear"
+name = "atomic-clock"
 requires-python = ">=3.7"
 classifiers = [
     "Development Status :: 1 - Planning",
@@ -14,9 +14,9 @@ classifiers = [
 ]
 
 [tool.poetry]
-name = "py-spear"
+name = "atomic-clock"
 version = "0.1.0"
-description = "🔱 Better, Faster dates & times for Python"
+description = "⚛️ Better, Faster dates & times for Python"
 authors = ["ZhengYu, Xu <zen-xu@outlook.com>"]
 
 [tool.poetry.dependencies]

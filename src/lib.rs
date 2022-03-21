@@ -20,8 +20,8 @@ lazy_static! {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn spear(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Spear>()?;
+fn atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<AtomicClock>()?;
     Ok(())
 }
 
@@ -29,13 +29,13 @@ fn spear(_py: Python, m: &PyModule) -> PyResult<()> {
 #[pyo3(
     text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"local\")"
 )]
-struct Spear {
+struct AtomicClock {
     datetime: DateTime<FixedOffset>,
 }
 
 #[pymethods]
 #[allow(clippy::too_many_arguments)]
-impl Spear {
+impl AtomicClock {
     #[new]
     #[args(
         hour = "0",
@@ -70,7 +70,7 @@ impl Spear {
     }
 
     fn __repr__(&self) -> String {
-        format!("<Spear [{}]>", self.__str__())
+        format!("<AtomicClock [{}]>", self.__str__())
     }
 
     fn __str__(&self) -> String {
