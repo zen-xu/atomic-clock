@@ -48,7 +48,6 @@ struct AtomicClock {
 }
 
 #[pymethods]
-#[allow(clippy::too_many_arguments)]
 impl AtomicClock {
     #[new]
     #[args(
@@ -58,6 +57,7 @@ impl AtomicClock {
         microsecond = "0",
         tzinfo = "TzInfo::String(String::from(\"UTC\"))"
     )]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python,
         year: i32,
