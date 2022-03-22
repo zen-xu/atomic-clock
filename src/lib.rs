@@ -1,4 +1,7 @@
-use std::{ops::Mul, str::FromStr};
+use std::{
+    ops::{Div, Mul},
+    str::FromStr,
+};
 
 #[macro_use]
 extern crate lazy_static;
@@ -91,6 +94,8 @@ impl AtomicClock {
     fn __str__(&self) -> String {
         self.datetime.to_rfc3339()
     }
+
+    // class methods
 
     #[classmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
@@ -212,6 +217,15 @@ impl AtomicClock {
         Ok(Self {
             datetime: (*UTC_OFFSET).from_utc_datetime(&datetime),
         })
+    }
+
+    // methods
+    fn timestamp(&self) -> f64 {
+        let nan_timestamp = Decimal::from_i64(self.datetime.timestamp_nanos()).unwrap();
+        nan_timestamp
+            .div(Decimal::from_f64(1e9).unwrap())
+            .to_f64()
+            .unwrap()
     }
 }
 

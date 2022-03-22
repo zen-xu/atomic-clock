@@ -152,3 +152,11 @@ class AtomicClock:
             >>> AtomicClock.fromordinal(738236)
             <AtomicClock [2022-03-22T00:00:00+00:00]>
         """
+    def timestamp(self) -> float:
+        """Returns a timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
+        object, in UTC time.
+
+        Usage::
+            >>> AtomicClock.utcnow().timestamp()
+            1647924832.531622
+        """
