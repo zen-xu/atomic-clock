@@ -4,7 +4,8 @@ use std::{ops::Mul, str::FromStr};
 extern crate lazy_static;
 
 use chrono::{
-    DateTime, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone, Utc,
+    DateTime, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime, Offset,
+    TimeZone, Utc,
 };
 use chrono_tz::Tz;
 use pyo3::{
@@ -27,6 +28,9 @@ lazy_static! {
         now.offset().fix()
     };
 }
+
+const MIN_ORDINAL: i64 = 1;
+const MAX_ORDINAL: i64 = 3652059;
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -192,6 +196,21 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: offset.from_utc_datetime(&naive),
+        })
+    }
+
+    #[classmethod]
+    #[pyo3(text_signature = "ordinal")]
+    fn fromordinal(_cls: &PyType, ordinal: i64) -> PyResult<Self> {
+        if !matches!(ordinal, MIN_ORDINAL..=MAX_ORDINAL) {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "ordinal {ordinal} is out of range"
+            )));
+        }
+
+        let datetime = NaiveDate::from_ymd(1, 1, 1).and_hms(0, 0, 0) + Duration::days(ordinal - 1);
+        Ok(Self {
+            datetime: (*UTC_OFFSET).from_utc_datetime(&datetime),
         })
     }
 }

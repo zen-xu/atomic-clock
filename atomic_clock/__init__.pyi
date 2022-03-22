@@ -141,3 +141,14 @@ class AtomicClock:
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
         """
+    @classmethod
+    def fromordinal(cls, ordinal) -> AtomicClock:
+        """Constructs an :class:`AtomicClock <atomic_clock.AtomiClock>` object corresponding
+        to the Gregorian Ordinal.
+
+        :param ordinal: an ``int`` corresponding to a Gregorian Ordinal.
+
+        Usage::
+            >>> AtomicClock.fromordinal(738236)
+            <AtomicClock [2022-03-22T00:00:00+00:00]>
+        """
