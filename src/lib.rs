@@ -7,14 +7,14 @@ use std::{
 extern crate lazy_static;
 
 use chrono::{
-    DateTime, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime, Offset,
-    TimeZone, Utc,
+    DateTime, Datelike, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime,
+    Offset, TimeZone, Timelike, Utc,
 };
 use chrono_tz::Tz;
 use pyo3::{
     exceptions,
     prelude::*,
-    types::{PyDate, PyDateAccess, PyDateTime, PyTimeAccess, PyType, PyTzInfo},
+    types::{PyDate, PyDateAccess, PyDateTime, PyTime, PyTimeAccess, PyType, PyTzInfo},
 };
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
@@ -226,6 +226,56 @@ impl AtomicClock {
             .div(Decimal::from_f64(1e9).unwrap())
             .to_f64()
             .unwrap()
+    }
+
+    fn date<'p>(&self, py: Python<'p>) -> &'p PyDate {
+        PyDate::new(
+            py,
+            self.datetime.year(),
+            self.datetime.month() as u8,
+            self.datetime.day() as u8,
+        )
+        .unwrap()
+    }
+
+    fn time<'p>(&self, py: Python<'p>) -> &'p PyTime {
+        PyTime::new(
+            py,
+            self.datetime.hour() as u8,
+            self.datetime.minute() as u8,
+            self.datetime.second() as u8,
+            self.datetime.nanosecond() / 1000,
+            None,
+        )
+        .unwrap()
+    }
+
+    // properties
+    #[getter]
+    fn naive<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
+        let naive_datetime = self.datetime.naive_utc();
+        PyDateTime::new(
+            py,
+            naive_datetime.year(),
+            naive_datetime.month() as u8,
+            naive_datetime.day() as u8,
+            naive_datetime.hour() as u8,
+            naive_datetime.minute() as u8,
+            naive_datetime.second() as u8,
+            naive_datetime.nanosecond() / 1000,
+            None,
+        )
+        .unwrap()
+    }
+
+    #[getter]
+    fn int_timestamp(&self) -> i64 {
+        self.datetime.timestamp()
+    }
+
+    #[getter]
+    fn float_timestamp(&self) -> f64 {
+        self.timestamp()
     }
 }
 

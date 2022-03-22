@@ -152,6 +152,32 @@ class AtomicClock:
             >>> AtomicClock.fromordinal(738236)
             <AtomicClock [2022-03-22T00:00:00+00:00]>
         """
+    def date(self) -> dt.date:
+        """Returns a ``date`` object with the same year, month and day.
+
+        Usage::
+            >>> AtomicClock.utcnow().date()
+            datetime.date(2022, 3, 22)
+        """
+    def time(self) -> dt.time:
+        """Returns a ``time`` object with the same hour, minute, second, microsecond.
+
+        Usage::
+            >>> AtomicClock.utcnow().time()
+            datetime.time(5, 52, 33, 354046)
+        """
+    @property
+    def naive(self) -> dt.datetime:
+        """Returns a naive datetime representation of the :class:`AtomicClock <atomic_clock.AtomicClock>`
+        object.
+
+        Usage::
+            >>> shanghai = AtomicClock.now('Asia/Shanghai')
+            >>> shanghai
+            <AtomicClock [2022-03-22T13:54:13.294995+08:00]>
+            >>> shanghai.naive
+            datetime.datetime(2022, 3, 22, 5, 54, 13, 294995)
+        """
     def timestamp(self) -> float:
         """Returns a timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
         object, in UTC time.
@@ -159,4 +185,22 @@ class AtomicClock:
         Usage::
             >>> AtomicClock.utcnow().timestamp()
             1647924832.531622
+        """
+    @property
+    def int_timestamp(self) -> int:
+        """Returns an integer timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
+        object, in UTC time.
+
+        Usage::
+            >>> AtomicClock.utcnow().int_timestamp
+            1647928543
+        """
+    @property
+    def float_timestamp(self) -> float:
+        """Returns a float timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
+        object, in UTC time.
+
+        Usage::
+            >>> AtomicClock.utcnow().float_timestamp
+            1647928591.746371
         """
