@@ -21,6 +21,7 @@ class AtomicClock:
 
     Recognized timezone expressions:
         - A ``tzinfo`` object (note: very slow).
+        - A ``atomic_clock.Tz`` object.
         - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
         - A ``str`` in ISO 8601 style, as in '+07:00'.
         - A ``str``, one of the following:  'local', 'utc', 'UTC'.
@@ -54,6 +55,7 @@ class AtomicClock:
 
         Recognized timezone expressions:
             - A ``tzinfo`` object (note: very slow).
+            - A ``atomic_clock.Tz`` object.
             - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
@@ -87,6 +89,7 @@ class AtomicClock:
 
         Recognized timezone expressions:
             - A ``tzinfo`` object (note: very slow).
+            - A ``atomic_clock.Tz`` object.
             - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
@@ -115,6 +118,7 @@ class AtomicClock:
 
         Recognized timezone expressions:
             - A ``tzinfo`` object (note: very slow).
+            - A ``atomic_clock.Tz`` object.
             - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
@@ -137,6 +141,7 @@ class AtomicClock:
 
         Recognized timezone expressions:
             - A ``tzinfo`` object (note: very slow).
+            - A ``atomic_clock.Tz`` object.
             - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
@@ -204,3 +209,20 @@ class AtomicClock:
             >>> AtomicClock.utcnow().float_timestamp
             1647928591.746371
         """
+
+class Tz(dt.tzinfo):
+    """A :class: `Tz <atomic_clock.Tz>` object
+
+    Implements the `tzinfo` interface
+
+    :param tzinfo:  A timezone expression.
+
+    .. _tz-expr:
+
+    Recognized timezone expressions:
+        - A ``str`` describing a timezone, similar to 'US/Pacific', or 'Asia/Shanghai'.
+        - A ``str`` in ISO 8601 style, as in '+07:00'.
+        - A ``str``, one of the following:  'local', 'utc', 'UTC'.
+    """
+
+    def __init__(self, tzinfo: str) -> None: ...

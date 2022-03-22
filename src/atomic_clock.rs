@@ -1,13 +1,9 @@
-use std::{
-    ops::{Div, Mul},
-    str::FromStr,
-};
+use std::ops::{Div, Mul};
 
 use chrono::{
-    DateTime, Datelike, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime,
-    Offset, TimeZone, Timelike, Utc,
+    DateTime, Datelike, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone,
+    Timelike, Utc,
 };
-use chrono_tz::Tz;
 use pyo3::{
     exceptions,
     prelude::*,
@@ -18,26 +14,25 @@ use rust_decimal::{
     Decimal,
 };
 
-lazy_static! {
-    static ref LOCAL_OFFSET: FixedOffset = {
-        let now = Local::now();
-        now.offset().fix()
-    };
-    static ref UTC_OFFSET: FixedOffset = {
-        let now = Utc::now();
-        now.offset().fix()
-    };
-}
+use crate::tz::{Tz, TzInfo};
 
 const MIN_ORDINAL: i64 = 1;
 const MAX_ORDINAL: i64 = 3652059;
+
+lazy_static! {
+    static ref UTC_TZ: Tz = {
+        let now = Utc::now();
+        let offset = now.offset().fix();
+        Tz::build(offset, "UTC".to_string())
+    };
+}
 
 #[pyclass]
 #[pyo3(
     text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"local\")"
 )]
 pub struct AtomicClock {
-    datetime: DateTime<FixedOffset>,
+    datetime: DateTime<Tz>,
 }
 
 #[pymethods]
@@ -62,10 +57,9 @@ impl AtomicClock {
         microsecond: u32,
         tzinfo: TzInfo,
     ) -> PyResult<Self> {
-        let offset = tzinfo.try_get_offset(py)?;
+        let tz = Tz::new(py, tzinfo)?;
         let datetime =
-            offset
-                .ymd_opt(year, month, day)
+            tz.ymd_opt(year, month, day)
                 .and_hms_micro_opt(hour, minute, second, microsecond);
 
         if matches!(&datetime, LocalResult::None) {
@@ -92,16 +86,15 @@ impl AtomicClock {
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
     fn now(_cls: &PyType, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
         let now = Local::now();
-        let offset = tzinfo.try_get_offset(py)?;
-        let datetime = offset.from_utc_datetime(&now.naive_utc());
+        let tz = Tz::new(py, tzinfo)?;
+        let datetime = tz.from_utc_datetime(&now.naive_utc());
         Ok(Self { datetime })
     }
 
     #[classmethod]
     fn utcnow(_cls: &PyType) -> PyResult<Self> {
         let now = Utc::now();
-        let offset = *UTC_OFFSET;
-        let datetime = offset.from_utc_datetime(&now.naive_utc());
+        let datetime = (*UTC_TZ).from_utc_datetime(&now.naive_utc());
         Ok(Self { datetime })
     }
 
@@ -109,14 +102,14 @@ impl AtomicClock {
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(timestamp, tzinfo = \"local\")")]
     fn fromtimestamp(_cls: &PyType, py: Python, timestamp: f64, tzinfo: TzInfo) -> PyResult<Self> {
-        let offset = tzinfo.try_get_offset(py)?;
+        let tz = Tz::new(py, tzinfo)?;
         let mut timestamp = Decimal::from_f64(timestamp).unwrap();
         if timestamp.scale() > 0 {
             timestamp.set_scale(6).unwrap();
         }
         let secs = timestamp.floor();
         let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
-        let datetime = offset.from_utc_datetime(&NaiveDateTime::from_timestamp(
+        let datetime = tz.from_utc_datetime(&NaiveDateTime::from_timestamp(
             secs.to_i64().unwrap(),
             nsecs.to_u32().unwrap(),
         ));
@@ -133,7 +126,7 @@ impl AtomicClock {
         }
         let secs = timestamp.floor();
         let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
-        let datetime = (*UTC_OFFSET).from_utc_datetime(&NaiveDateTime::from_timestamp(
+        let datetime = (*UTC_TZ).from_utc_datetime(&NaiveDateTime::from_timestamp(
             secs.to_i64().unwrap(),
             nsecs.to_u32().unwrap(),
         ));
@@ -150,7 +143,7 @@ impl AtomicClock {
         dt: &PyDateTime,
         tzinfo: Option<TzInfo>,
     ) -> PyResult<Self> {
-        let offset = {
+        let tz = {
             let tzinfo = if let Some(tzinfo) = tzinfo {
                 tzinfo
             } else {
@@ -161,7 +154,7 @@ impl AtomicClock {
                     TzInfo::String("UTC".to_string())
                 }
             };
-            tzinfo.try_get_offset(py)?
+            Tz::new(py, tzinfo)?
         };
 
         let naive = NaiveDate::from_ymd(dt.get_year(), dt.get_month() as u32, dt.get_day() as u32)
@@ -173,7 +166,7 @@ impl AtomicClock {
             );
 
         Ok(Self {
-            datetime: offset.from_local_datetime(&naive).unwrap(),
+            datetime: tz.from_local_datetime(&naive).unwrap(),
         })
     }
 
@@ -181,7 +174,7 @@ impl AtomicClock {
     #[args(tzinfo = "TzInfo::String(String::from(\"UTC\"))")]
     #[pyo3(text_signature = "(date, tzinfo = \"UTC\")")]
     fn fromdate(_cls: &PyType, py: Python, date: &PyDate, tzinfo: TzInfo) -> PyResult<Self> {
-        let offset = tzinfo.try_get_offset(py)?;
+        let tz = Tz::new(py, tzinfo)?;
         let naive = NaiveDate::from_ymd(
             date.get_year(),
             date.get_month() as u32,
@@ -190,7 +183,7 @@ impl AtomicClock {
         .and_hms_micro(0, 0, 0, 0);
 
         Ok(Self {
-            datetime: offset.from_utc_datetime(&naive),
+            datetime: tz.from_utc_datetime(&naive),
         })
     }
 
@@ -205,7 +198,7 @@ impl AtomicClock {
 
         let datetime = NaiveDate::from_ymd(1, 1, 1).and_hms(0, 0, 0) + Duration::days(ordinal - 1);
         Ok(Self {
-            datetime: (*UTC_OFFSET).from_utc_datetime(&datetime),
+            datetime: (*UTC_TZ).from_utc_datetime(&datetime),
         })
     }
 
@@ -266,47 +259,5 @@ impl AtomicClock {
     #[getter]
     fn float_timestamp(&self) -> f64 {
         self.timestamp()
-    }
-}
-
-#[derive(FromPyObject)]
-enum TzInfo<'p> {
-    String(String),
-    Tz(&'p PyTzInfo),
-}
-
-impl TzInfo<'_> {
-    fn try_get_offset(self, py: Python) -> PyResult<FixedOffset> {
-        match self {
-            Self::String(ref tzinfo) => {
-                if tzinfo.to_lowercase() == "local" {
-                    Ok(*LOCAL_OFFSET)
-                } else if tzinfo.contains(':') {
-                    let tmp_datetime = format!("1970-01-01T00:00:00{}", tzinfo);
-                    let tmp_datetime =
-                        DateTime::parse_from_rfc3339(&tmp_datetime).map_err(|_e| {
-                            exceptions::PyValueError::new_err("invalid timezone offset")
-                        })?;
-                    Ok(*tmp_datetime.offset())
-                } else {
-                    let tzinfo = if tzinfo.to_lowercase() == "utc" {
-                        "UTC"
-                    } else {
-                        tzinfo
-                    };
-                    let tz = Tz::from_str(tzinfo).map_err(exceptions::PyValueError::new_err)?;
-                    Ok(tz.ymd(1970, 1, 1).offset().fix())
-                }
-            }
-            Self::Tz(tzinfo) => {
-                let tzinfo = tzinfo.to_object(py);
-                let dummy_datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None)?;
-                let offset = tzinfo
-                    .call_method(py, "utcoffset", (dummy_datetime,), None)?
-                    .getattr(py, "seconds")?;
-                let offset: i32 = offset.extract(py)?;
-                Ok(FixedOffset::east(offset))
-            }
-        }
     }
 }
