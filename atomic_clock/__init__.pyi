@@ -152,6 +152,22 @@ class AtomicClock:
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
         """
     @classmethod
+    def strptime(
+        cls, date_str: str, fmt: str, tzinfo: str | dt.tzinfo | Tz | None = None
+    ) -> AtomicClock:
+        """Constructs an :class:`AtomicClock <atomic_clock.AtomiClock>` object from a date string and format,
+        in the style of ``datetime.strptime``.  Optionally replaces the parsed timezone.
+
+        :param date_str: the date string.
+        :param fmt: the format string using datetime format codes.
+        :param tzinfo: (optional) A :ref:`timezone expression <tz-expr>`.  Defaults to the parsed
+            timezone if ``fmt`` contains a timezone directive, otherwise UTC.
+
+        Usage::
+            >>> AtomicClock.strptime('20-01-2019 15:49:10', '%d-%m-%Y %H:%M:%S')
+            <AtomicClock [2019-01-20T15:49:10+00:00]>
+        """
+    @classmethod
     def fromordinal(cls, ordinal) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomiClock>` object corresponding
         to the Gregorian Ordinal.

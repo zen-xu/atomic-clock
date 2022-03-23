@@ -4,8 +4,8 @@ use std::{
 };
 
 use chrono::{
-    DateTime, Datelike, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone,
-    Timelike, Utc,
+    DateTime, Datelike, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime,
+    Offset, TimeZone, Timelike, Utc,
 };
 use pyo3::{
     exceptions,
@@ -203,6 +203,25 @@ impl AtomicClock {
             datetime: tz.from_utc_datetime(&naive),
             tz,
         })
+    }
+
+    #[classmethod]
+    #[pyo3(text_signature = "ordinal")]
+    fn strptime(
+        _cls: &PyType,
+        py: Python,
+        date_str: &str,
+        fmt: &str,
+        tzinfo: Option<TzInfo>,
+    ) -> PyResult<Self> {
+        let tzinfo = tzinfo
+            .or_else(|| Some(TzInfo::String("UTC".to_string())))
+            .unwrap();
+        let tz = Tz::new(py, tzinfo)?;
+        let datetime = tz
+            .datetime_from_str(date_str, fmt)
+            .map_err(|e| exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self { datetime, tz })
     }
 
     #[classmethod]
