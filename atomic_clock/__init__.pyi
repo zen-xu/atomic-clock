@@ -172,6 +172,24 @@ class AtomicClock:
             datetime.time(5, 52, 33, 354046)
         """
     @property
+    def tzinfo(self) -> Tz:
+        """Gets the ``atomic_clock.Tz`` of the :class:`AtomicClock <atomic_clock.AtomicClock>` object.
+
+        Usage::
+            >>> now = AtomicClock.now('Asia/Shanghai')
+            >>> now.tzinfo
+            <Tz [Asia/Shanghai]>
+        """
+    @property
+    def datetime(self) -> dt.datetime:
+        """Returns a datetime representation of the :class:`AtomicClock <atomic_clock.AtomicClock>` object.
+
+        Usage::
+            >>> now = AtomicClock.now()
+            >>> now.datetime
+            datetime.datetime(2022, 3, 23, 12, 47, 36, 671398, tzinfo=<Tz [local]>)
+        """
+    @property
     def naive(self) -> dt.datetime:
         """Returns a naive datetime representation of the :class:`AtomicClock <atomic_clock.AtomicClock>`
         object.

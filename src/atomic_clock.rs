@@ -33,6 +33,7 @@ lazy_static! {
 )]
 pub struct AtomicClock {
     datetime: DateTime<Tz>,
+    tz: Tz,
 }
 
 #[pymethods]
@@ -68,6 +69,7 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: datetime.unwrap(),
+            tz,
         })
     }
 
@@ -88,14 +90,17 @@ impl AtomicClock {
         let now = Local::now();
         let tz = Tz::new(py, tzinfo)?;
         let datetime = tz.from_utc_datetime(&now.naive_utc());
-        Ok(Self { datetime })
+        Ok(Self { datetime, tz })
     }
 
     #[classmethod]
     fn utcnow(_cls: &PyType) -> PyResult<Self> {
         let now = Utc::now();
         let datetime = (*UTC_TZ).from_utc_datetime(&now.naive_utc());
-        Ok(Self { datetime })
+        Ok(Self {
+            datetime,
+            tz: (*UTC_TZ).clone(),
+        })
     }
 
     #[classmethod]
@@ -114,7 +119,7 @@ impl AtomicClock {
             nsecs.to_u32().unwrap(),
         ));
 
-        Ok(Self { datetime })
+        Ok(Self { datetime, tz })
     }
 
     #[classmethod]
@@ -131,7 +136,10 @@ impl AtomicClock {
             nsecs.to_u32().unwrap(),
         ));
 
-        Ok(Self { datetime })
+        Ok(Self {
+            datetime,
+            tz: (*UTC_TZ).clone(),
+        })
     }
 
     #[classmethod]
@@ -167,6 +175,7 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: tz.from_local_datetime(&naive).unwrap(),
+            tz,
         })
     }
 
@@ -184,6 +193,7 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: tz.from_utc_datetime(&naive),
+            tz,
         })
     }
 
@@ -199,6 +209,7 @@ impl AtomicClock {
         let datetime = NaiveDate::from_ymd(1, 1, 1).and_hms(0, 0, 0) + Duration::days(ordinal - 1);
         Ok(Self {
             datetime: (*UTC_TZ).from_utc_datetime(&datetime),
+            tz: (*UTC_TZ).clone(),
         })
     }
 
@@ -234,6 +245,27 @@ impl AtomicClock {
     }
 
     // properties
+    #[getter]
+    fn tzinfo(&self, py: Python) -> PyResult<Py<PyAny>> {
+        Ok(Py::new(py, self.tz.clone())?.to_object(py))
+    }
+
+    #[getter]
+    fn datetime<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
+        PyDateTime::new(
+            py,
+            self.datetime.year(),
+            self.datetime.month() as u8,
+            self.datetime.day() as u8,
+            self.datetime.hour() as u8,
+            self.datetime.minute() as u8,
+            self.datetime.second() as u8,
+            self.datetime.nanosecond() / 1000,
+            Some(&self.tzinfo(py).unwrap()),
+        )
+        .unwrap()
+    }
+
     #[getter]
     fn naive<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
         let naive_datetime = self.datetime.naive_utc();
