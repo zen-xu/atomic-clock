@@ -249,6 +249,28 @@ impl AtomicClock {
         .unwrap()
     }
 
+    fn timez<'p>(&self, py: Python<'p>) -> &'p PyTime {
+        PyTime::new(
+            py,
+            self.datetime.hour() as u8,
+            self.datetime.minute() as u8,
+            self.datetime.second() as u8,
+            self.datetime.nanosecond() / 1000,
+            Some(&self.tzinfo(py).unwrap()),
+        )
+        .unwrap()
+    }
+
+    #[args(tz = "None")]
+    #[pyo3(text_signature = "(tz = None)")]
+    fn astimezone<'p>(&self, py: Python<'p>, tz: Option<TzInfo>) -> PyResult<&'p PyDateTime> {
+        if let Some(tz) = tz {
+            Ok(self.to(py, tz)?.datetime(py))
+        } else {
+            Ok(self.datetime(py))
+        }
+    }
+
     fn clone(&self) -> Self {
         Clone::clone(self)
     }

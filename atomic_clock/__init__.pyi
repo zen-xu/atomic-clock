@@ -171,6 +171,24 @@ class AtomicClock:
             >>> AtomicClock.utcnow().time()
             datetime.time(5, 52, 33, 354046)
         """
+    def timetz(self) -> dt.time:
+        """Returns a ``time`` object with the same hour, minute, second, microsecond and
+        tzinfo.
+        Usage::
+            >>> AtomicClock.utcnow().timetz()
+            datetime.time(13, 54, 18, 886227, tzinfo=<Tz [UTC]>)
+        """
+    def astimezone(self, tz: str | dt.tzinfo | Tz | None = None) -> dt.datetime:
+        """Returns a ``datetime`` object, converted to the specified timezone.
+
+        :param tz: A :ref:`timezone expression <tz-expr>`.
+
+        Usage::
+            >>> shanghai = AtomicClock.now('Asia/Shanghai')
+            >>> nyc = AtomicClock.now('America/New_York').tzinfo
+            >>> shanghai.astimezone(nyc)
+            datetime.datetime(2022, 3, 23, 10, 13, 13, 211622, tzinfo=<Tz [America/New_York]>)
+        """
     def clone(self) -> AtomicClock:
         """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, cloned from the current one.
 
@@ -178,7 +196,7 @@ class AtomicClock:
             >>> now = AtomicClock.utcnow()
             >>> cloned = now.clone()
         """
-    def to(self, tzinfo: Tz) -> AtomicClock:
+    def to(self, tzinfo: str | dt.tzinfo | Tz) -> AtomicClock:
         """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, converted
         to the target timezone.
 
