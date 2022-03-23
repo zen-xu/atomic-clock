@@ -50,7 +50,7 @@ class AtomicClock:
         tzinfo: str | dt.tzinfo = "local",
     ) -> None: ...
     @classmethod
-    def now(cls, tzinfo: str | dt.tzinfo = "local") -> AtomicClock:
+    def now(cls, tzinfo: str | dt.tzinfo | Tz = "local") -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing "now" in the given
         timezone.
 
@@ -82,7 +82,7 @@ class AtomicClock:
     def fromtimestamp(
         cls,
         timestamp: float,
-        tzinfo: str | dt.tzinfo = "local",
+        tzinfo: str | dt.tzinfo | Tz = "local",
     ) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a timestamp, converted to
         the given timezone.
@@ -110,7 +110,7 @@ class AtomicClock:
         """
     @classmethod
     def fromdatetime(
-        cls, dt: dt.datetime, tzinfo: str | dt.tzinfo = "utc"
+        cls, dt: dt.datetime, tzinfo: str | dt.tzinfo | Tz = "utc"
     ) -> AtomicClock:
         """Constructs an :class:`atomic_clock <atomic_clock.AtomicClock>` object from a ``datetime`` and
         optional replacement timezone.
@@ -135,7 +135,7 @@ class AtomicClock:
             <AtomicClock [2022-03-22T00:39:02.316809+08:00]>
         """
     @classmethod
-    def fromdate(cls, dt: dt.date, tzinfo: str | dt.tzinfo = "utc") -> AtomicClock:
+    def fromdate(cls, dt: dt.date, tzinfo: str | dt.tzinfo | Tz = "utc") -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a ``date`` and optional
         replacement timezone.  All time values are set to 0.
 
