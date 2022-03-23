@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+from typing import Optional
+
 class AtomicClock:
     """An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
 
@@ -188,6 +190,21 @@ class AtomicClock:
             >>> nyc = AtomicClock.now('America/New_York').tzinfo
             >>> shanghai.astimezone(nyc)
             datetime.datetime(2022, 3, 23, 10, 13, 13, 211622, tzinfo=<Tz [America/New_York]>)
+        """
+    def utcoffset(self) -> Optional[dt.timedelta]:
+        """Returns a ``timedelta`` object representing the whole number of minutes difference from
+        UTC time.
+
+        Usage::
+            >>> AtomicClock.now('US/Pacific').utcoffset()
+            datetime.timedelta(days=-1, seconds=61200)
+        """
+    def dst(self) -> Optional[dt.timedelta]:
+        """Returns the daylight savings time adjustment.
+
+        Usage::
+            >>> AtomicClock.now('US/Pacific').dst()
+            datetime.timedelta(seconds=3600)
         """
     def clone(self) -> AtomicClock:
         """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, cloned from the current one.

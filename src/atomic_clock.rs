@@ -7,7 +7,7 @@ use chrono::{
 use pyo3::{
     exceptions,
     prelude::*,
-    types::{PyDate, PyDateAccess, PyDateTime, PyTime, PyTimeAccess, PyType, PyTzInfo},
+    types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyType, PyTzInfo},
 };
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
@@ -23,7 +23,7 @@ lazy_static! {
     static ref UTC_TZ: Tz = {
         let now = Utc::now();
         let offset = now.offset().fix();
-        Tz::build(offset, "UTC".to_string())
+        Tz::build(offset, "UTC".to_string(), None)
     };
 }
 
@@ -269,6 +269,16 @@ impl AtomicClock {
         } else {
             Ok(self.datetime(py))
         }
+    }
+
+    fn utcoffset<'p>(&self, py: Python<'p>) -> Option<&'p PyDelta> {
+        let dummy_datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None).unwrap();
+        Some(self.tz.utcoffset(py, dummy_datetime))
+    }
+
+    fn dst<'p>(&self, py: Python<'p>) -> Option<&'p PyDelta> {
+        let dummy_datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None).unwrap();
+        self.tz.dst(py, Some(dummy_datetime))
     }
 
     fn clone(&self) -> Self {
