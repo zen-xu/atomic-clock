@@ -82,6 +82,10 @@ impl AtomicClock {
         self.datetime.to_rfc3339()
     }
 
+    fn __format__(&self, formatstr: &str) -> String {
+        self.format(formatstr)
+    }
+
     // class methods
 
     #[classmethod]
@@ -256,6 +260,12 @@ impl AtomicClock {
             datetime: self.datetime.with_timezone(&tz),
             tz,
         })
+    }
+
+    #[args(fmt = "\"%Y-%m-%d %H:%M:%S%Z\"")]
+    #[pyo3(text_signature = "(fmt = \"%Y-%m-%d %H:%M:%S%Z\")")]
+    fn format(&self, fmt: &str) -> String {
+        self.datetime.format(fmt).to_string()
     }
 
     // properties

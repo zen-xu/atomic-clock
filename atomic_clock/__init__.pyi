@@ -201,6 +201,24 @@ class AtomicClock:
             >>> utc.to('local').to('utc')
             <Arrow [2013-05-09T03:49:12.311072+00:00]>
         """
+    def format(self, fmt: str = "%Y-%m-%d %H:%M:%S%Z") -> str:
+        """Returns a string representation of the :class:`Arrow <arrow.arrow.Arrow>` object,
+        formatted according to the provided format string.
+
+        Visit https://docs.rs/chrono/latest/chrono/format/strftime/index.html to get more formatter details.
+
+        :param fmt: the format string.
+
+        Usage::
+            >>> now = AtomicClock.utcnow()
+            >>> now.format('%Y-%m-%d %H:%M:%S %:z')
+            '2022-03-23 13:25:50 +00:00'
+            >>> now.format('%s')
+            '1648041950'
+            >>> now.format()
+            2022-03-23 13:25:50+00:00'
+        """
+    def __format__(self, __format_spec: str) -> str: ...
     @property
     def tzinfo(self) -> Tz:
         """Gets the ``atomic_clock.Tz`` of the :class:`AtomicClock <atomic_clock.AtomicClock>` object.
