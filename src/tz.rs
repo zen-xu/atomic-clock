@@ -128,7 +128,7 @@ impl Tz {
         None
     }
 
-    fn dst<'p>(&self, py: Python<'p>, dt: Option<&'p PyDateTime>) -> Option<&'p PyDelta> {
+    pub fn dst<'p>(&self, py: Python<'p>, dt: Option<&'p PyDateTime>) -> Option<&'p PyDelta> {
         dt?;
         let seconds = if let Some(dst_offset) = self.dst_offset {
             dst_offset.num_seconds()
@@ -138,7 +138,7 @@ impl Tz {
         Some(PyDelta::new(py, 0, seconds as i32, 0, true).unwrap())
     }
 
-    fn utcoffset<'p>(&self, py: Python<'p>, _dt: &'p PyDateTime) -> &'p PyDelta {
+    pub fn utcoffset<'p>(&self, py: Python<'p>, _dt: &'p PyDateTime) -> &'p PyDelta {
         PyDelta::new(py, 0, self.offset.local_minus_utc(), 0, true).unwrap()
     }
 }
