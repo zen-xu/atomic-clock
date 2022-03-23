@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, FixedOffset, Local, Offset, TimeZone};
+use chrono::{DateTime, FixedOffset, Local, Offset, TimeZone, Utc};
 use chrono_tz::Tz as CTz;
 use pyo3::{
     exceptions,
@@ -9,6 +9,7 @@ use pyo3::{
 };
 
 lazy_static! {
+    static ref UTC_NOW: DateTime<Utc> = Utc::now();
     static ref LOCAL_OFFSET: FixedOffset = {
         let now = Local::now();
         now.offset().fix()
@@ -83,8 +84,7 @@ impl Tz {
                         tzinfo
                     };
                     let tz = CTz::from_str(tzinfo).map_err(exceptions::PyValueError::new_err)?;
-
-                    tz.ymd(1970, 1, 1).offset().fix()
+                    UTC_NOW.with_timezone(&tz).offset().fix()
                 };
                 (offset, tzinfo.clone())
             }
