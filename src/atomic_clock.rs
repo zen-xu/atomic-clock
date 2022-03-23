@@ -249,6 +249,15 @@ impl AtomicClock {
         Clone::clone(self)
     }
 
+    #[pyo3(text_signature = "(tzinfo)")]
+    fn to(&self, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
+        let tz = Tz::new(py, tzinfo)?;
+        Ok(Self {
+            datetime: self.datetime.with_timezone(&tz),
+            tz,
+        })
+    }
+
     // properties
     #[getter]
     fn tzinfo(&self, py: Python) -> PyResult<Py<PyAny>> {

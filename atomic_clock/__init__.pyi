@@ -178,6 +178,29 @@ class AtomicClock:
             >>> now = AtomicClock.utcnow()
             >>> cloned = now.clone()
         """
+    def to(self, tzinfo: Tz) -> AtomicClock:
+        """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, converted
+        to the target timezone.
+
+        :param tzinfo: A :ref:`timezone expression <tz-expr>`.
+
+        Usage::
+            >>> utc = AtomicClock.utcnow()
+            >>> utc
+            <AtomicClock [2022-03-23T12:36:32.198831+00:00]>
+            >>> utc.to('US/Pacific')
+            <AtomicClock [2022-03-23T05:36:32.198831-07:00]>
+            >>> utc.to(tz.tzlocal())
+            <AtomicClock [2022-03-23T20:36:32.198831+08:00]>
+            >>> utc.to(Tz("local"))
+            <AtomicClock [2022-03-23T20:36:32.198831+08:00]>
+            >>> utc.to('local')
+            <AtomicClock [2022-03-23T20:36:32.198831+08:00]>
+            >>> utc.to('-07:00')
+            <AtomicClock [2022-03-23T05:36:32.198831-07:00]>
+            >>> utc.to('local').to('utc')
+            <Arrow [2013-05-09T03:49:12.311072+00:00]>
+        """
     @property
     def tzinfo(self) -> Tz:
         """Gets the ``atomic_clock.Tz`` of the :class:`AtomicClock <atomic_clock.AtomicClock>` object.
