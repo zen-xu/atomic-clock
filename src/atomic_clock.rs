@@ -31,6 +31,7 @@ lazy_static! {
 #[pyo3(
     text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"local\")"
 )]
+#[derive(Clone)]
 pub struct AtomicClock {
     datetime: DateTime<Tz>,
     tz: Tz,
@@ -242,6 +243,10 @@ impl AtomicClock {
             None,
         )
         .unwrap()
+    }
+
+    fn clone(&self) -> Self {
+        Clone::clone(self)
     }
 
     // properties

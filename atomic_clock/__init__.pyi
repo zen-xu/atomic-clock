@@ -171,6 +171,13 @@ class AtomicClock:
             >>> AtomicClock.utcnow().time()
             datetime.time(5, 52, 33, 354046)
         """
+    def clone(self) -> AtomicClock:
+        """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, cloned from the current one.
+
+        Usage:
+            >>> now = AtomicClock.utcnow()
+            >>> cloned = now.clone()
+        """
     @property
     def tzinfo(self) -> Tz:
         """Gets the ``atomic_clock.Tz`` of the :class:`AtomicClock <atomic_clock.AtomicClock>` object.
