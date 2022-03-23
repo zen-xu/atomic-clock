@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import datetime as dt
 
+from time import struct_time
+from typing import Literal
 from typing import Optional
+from typing import Tuple
 
 class AtomicClock:
     """An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
@@ -206,12 +209,89 @@ class AtomicClock:
             >>> AtomicClock.now('US/Pacific').dst()
             datetime.timedelta(seconds=3600)
         """
+    def timetuple(self) -> struct_time:  # type: ignore
+        """Returns a ``time.struct_time``, in the current timezone.
+
+        Usage::
+            >>> AtomicClock.utcnow().timetuple()
+            time.struct_time(tm_year=2022, tm_mon=3, tm_mday=23, tm_hour=16, tm_min=37, tm_sec=47, tm_wday=2, tm_yday=82, tm_isdst=0)
+        """
+    def utctimetuple(self) -> struct_time:
+        """Returns a ``time.struct_time``, in UTC time.
+
+        Usage::
+            >>> AtomicClock.utcnow().utctimetuple()
+            time.struct_time(tm_year=2022, tm_mon=3, tm_mday=23, tm_hour=16, tm_min=38, tm_sec=23, tm_wday=2, tm_yday=82, tm_isdst=0)
+        """
+    def toordinal(self) -> int:
+        """Returns the proleptic Gregorian ordinal of the date.
+
+        Usage::
+            >>> AtomicClock.utcnow().toordinal()
+            738237
+        """
+    def weekday(self) -> int:
+        """Returns the day of the week as an integer (0-6).
+
+        Usage::
+            >>> AtomicClock.utcnow().weekday()
+            3
+        """
+    def isoweekday(self) -> int:
+        """Returns the ISO day of the week as an integer (1-7).
+
+        Usage::
+            >>> AtomicClock.utcnow().isoweekday()
+            6
+        """
+    def isocalendar(self) -> Tuple[int, int, int]:
+        """Returns an IsoCalendarDate namedtuple, (ISO year, ISO week number, ISO weekday).
+        Usage::
+            >>> AtomicClock.utcnow().isocalendar()
+            IsoCalendarDate(year=2022, week=12, weekday=3)
+        """
+    def isoformat(
+        self,
+        sep: str = "T",
+        timespec: Literal[
+            "auto", "hours", "minutes", "seconds", "milliseconds", "microseconds"
+        ] = "auto",
+    ) -> str:
+        """Returns an ISO 8601 formatted representation of the date and time.
+
+        Usage::
+            >>> AtomicClock.utcnow().isoformat()
+            '2022-03-23T16:43:23.314834+00:00'
+        """
+    def ctime(self) -> str:
+        """Returns a ctime formatted representation of the date and time.
+
+        Usage::
+            >>> AtomicClock.utcnow().ctime()
+            'Wed Mar 23 16:44:00 2022'
+        """
+    def strftime(self, format: str) -> str:
+        """Formats in the style of ``datetime.strftime``.
+
+        :param format: the format string.
+
+        Usage::
+            >>> AtomicClock.utcnow().strftime('%d-%m-%Y %H:%M:%S')
+            '23-03-2022 16:44:37'
+        """
     def clone(self) -> AtomicClock:
         """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, cloned from the current one.
 
         Usage:
             >>> now = AtomicClock.utcnow()
             >>> cloned = now.clone()
+        """
+    def for_json(self) -> str:
+        """Serializes for the ``for_json`` protocol of simplejson.
+
+        Usage::
+            >>> AtomicClock.utcnow().for_json()
+            '2022-03-23T16:45:17.722416+00:00'
         """
     def to(self, tzinfo: str | dt.tzinfo | Tz) -> AtomicClock:
         """Returns a new :class:`AtomicClock <atomic_clock.AtomiClock>` object, converted

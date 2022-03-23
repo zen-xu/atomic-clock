@@ -1,4 +1,7 @@
-use std::ops::{Div, Mul};
+use std::{
+    ops::{Div, Mul},
+    vec,
+};
 
 use chrono::{
     DateTime, Datelike, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone,
@@ -281,6 +284,62 @@ impl AtomicClock {
         self.tz.dst(py, Some(dummy_datetime))
     }
 
+    fn timetuple<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+        self.datetime(py).call_method("timetuple", (), None)
+    }
+
+    fn utctimetuple<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+        self.datetime(py).call_method("utctimetuple", (), None)
+    }
+
+    fn toordinal(&self) -> i64 {
+        let duration = self.datetime.naive_utc() - NaiveDate::from_ymd(1, 1, 1).and_hms(0, 0, 0);
+        duration.num_days() + 1
+    }
+
+    fn weekday(&self) -> u32 {
+        self.datetime.weekday().num_days_from_monday()
+    }
+
+    fn isoweekday(&self) -> u32 {
+        self.datetime.weekday().num_days_from_sunday()
+    }
+
+    fn isocalendar(&self) -> IsoCalendarDate {
+        let iso_week = self.datetime.iso_week();
+        IsoCalendarDate(vec![
+            iso_week.year() as u32,
+            iso_week.week(),
+            self.isoweekday(),
+        ])
+    }
+
+    fn ctime(&self) -> String {
+        self.datetime.format("%a %b %e %T %Y").to_string()
+    }
+
+    fn strftime(&self, format: &str) -> String {
+        self.datetime.format(format).to_string()
+    }
+
+    fn for_json(&self) -> String {
+        self.datetime.format("%Y-%m-%dT%H:%M:%S%.f%Z").to_string()
+    }
+
+    #[args(sep = "\"T\"", timespec = "\"auto\"")]
+    #[pyo3(text_signature = "(spec = \"T\", timespec = \"auto\")")]
+    fn isoformat(&self, sep: &str, timespec: &str) -> PyResult<String> {
+        let format = match timespec {
+            "auto" | "microseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.f%Z"),
+            "hours" => format!("%Y-%m-%d{sep}%H"),
+            "minutes" => format!("%Y-%m-%d{sep}%H:%M"),
+            "seconds" => format!("%Y-%m-%d{sep}%H:%M:%S"),
+            "milliseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.3f"),
+            _ => return Err(exceptions::PyValueError::new_err("Unknown timespec value")),
+        };
+        Ok(self.datetime.format(&format).to_string())
+    }
+
     fn clone(&self) -> Self {
         Clone::clone(self)
     }
@@ -347,5 +406,56 @@ impl AtomicClock {
     #[getter]
     fn float_timestamp(&self) -> f64 {
         self.timestamp()
+    }
+}
+
+#[pyclass]
+struct IsoCalendarDate(Vec<u32>);
+
+#[pymethods]
+impl IsoCalendarDate {
+    fn __repr__(&self) -> String {
+        format!(
+            "IsoCalendarDate(year={}, week={}, weekday={})",
+            self.0[0], self.0[1], self.0[2]
+        )
+    }
+
+    #[getter]
+    fn year(&self) -> u32 {
+        self.0[0]
+    }
+
+    #[getter]
+    fn week(&self) -> u32 {
+        self.0[1]
+    }
+
+    #[getter]
+    fn weekday(&self) -> u32 {
+        self.0[2]
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> PyResult<Py<IsoCalendarDateIter>> {
+        let iter = IsoCalendarDateIter {
+            inner: slf.0.clone().into_iter(),
+        };
+        Py::new(slf.py(), iter)
+    }
+}
+
+#[pyclass]
+struct IsoCalendarDateIter {
+    inner: std::vec::IntoIter<u32>,
+}
+
+#[pymethods]
+impl IsoCalendarDateIter {
+    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<u32> {
+        slf.inner.next()
     }
 }
