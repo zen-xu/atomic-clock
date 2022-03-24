@@ -363,6 +363,82 @@ impl AtomicClock {
         Clone::clone(self)
     }
 
+    #[pyo3(
+        text_signature = "(*, year=None, month=None, day=None, hour=None, minute=None, second=None, microsecond=None, tzinfo=None)"
+    )]
+    #[allow(clippy::too_many_arguments)]
+    fn replace(
+        &self,
+        py: Python,
+        year: Option<i32>,
+        month: Option<u32>,
+        day: Option<u32>,
+        hour: Option<u32>,
+        minute: Option<u32>,
+        second: Option<u32>,
+        microsecond: Option<u32>,
+        tzinfo: Option<TzInfo>,
+    ) -> PyResult<Self> {
+        let mut obj = self.clone();
+
+        if let Some(year) = year {
+            obj.datetime = obj
+                .datetime
+                .with_year(year)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid year"))?;
+        }
+
+        if let Some(month) = month {
+            obj.datetime = obj
+                .datetime
+                .with_month(month)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid month"))?;
+        }
+
+        if let Some(day) = day {
+            obj.datetime = obj
+                .datetime
+                .with_day(day)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid day"))?;
+        }
+
+        if let Some(hour) = hour {
+            obj.datetime = obj
+                .datetime
+                .with_hour(hour)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid hour"))?;
+        }
+
+        if let Some(minute) = minute {
+            obj.datetime = obj
+                .datetime
+                .with_minute(minute)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid minute"))?;
+        }
+
+        if let Some(second) = second {
+            obj.datetime = obj
+                .datetime
+                .with_minute(second)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid second"))?;
+        }
+
+        if let Some(microsecond) = microsecond {
+            obj.datetime = obj
+                .datetime
+                .with_nanosecond(microsecond * 1000)
+                .ok_or_else(|| exceptions::PyValueError::new_err("invalid microsecond"))?;
+        }
+
+        if let Some(tzinfo) = tzinfo {
+            let tz = Tz::new(py, tzinfo)?;
+            obj.datetime = obj.datetime.with_timezone(&tz);
+            obj.tz = tz;
+        }
+
+        Ok(obj)
+    }
+
     #[pyo3(text_signature = "(tzinfo)")]
     fn to(&self, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
         let tz = Tz::new(py, tzinfo)?;

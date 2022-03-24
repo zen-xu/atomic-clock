@@ -302,6 +302,36 @@ class AtomicClock:
             >>> now = AtomicClock.utcnow()
             >>> cloned = now.clone()
         """
+    def replace(
+        self,
+        *,
+        year: int | None = None,
+        month: int | None = None,
+        day: int | None = None,
+        hour: int | None = None,
+        minute: int | None = None,
+        second: int | None = None,
+        microsecond: int | None = None,
+        tzinfo: str | dt.tzinfo | Tz | None = None,
+    ) -> None:
+        """Returns a new :class:`AtomicClock <atomic_clock.AtomicClock>` object with attributes updated
+        according to inputs.
+
+        Use property names to set their value absolutely::
+
+            >>> from atomic_clock import AtomicClock
+            >>> now = AtomicClock.utcnow()
+            >>> now
+            <AtomicClock [2022-03-24T14:44:51.560065+00:00]>
+            >>> arw.replace(year=2021, month=8)
+            <AtomicClock [2021-08-24T14:44:51.560065+00:00]>
+
+        You can also replace the timezone without conversion, using a
+        :ref:`timezone expression <tz-expr>`::
+
+            >>> now.replace(tzinfo="local")
+            <AtomicClock [2021-08-24T22:44:51.560065+08:00]>
+        """
     def for_json(self) -> str:
         """Serializes for the ``for_json`` protocol of simplejson.
 
