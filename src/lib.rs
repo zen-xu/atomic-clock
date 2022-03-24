@@ -14,5 +14,6 @@ use tz::Tz;
 fn _atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AtomicClock>()?;
     m.add_class::<Tz>()?;
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

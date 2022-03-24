@@ -44,7 +44,6 @@ repos:
           - flake8-comprehensions==3.7.0
           - flake8-eradicate==1.2.0
           - flake8-no-pep420==1.2.0
-          - flake8-quotes==3.3.1
           - flake8-simplify==0.14.2
           - flake8-tidy-imports==4.5.0
           - flake8-type-checking==1.1.0
@@ -58,7 +57,6 @@ repos:
       - id: isort
         name: "isort (python)"
         types: [python]
-        args: [--add-import, from __future__ import annotations]
       - id: isort
         name: "isort (pyi)"
         types: [pyi]
