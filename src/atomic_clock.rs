@@ -4,8 +4,8 @@ use std::{
 };
 
 use chrono::{
-    DateTime, Datelike, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime,
-    Offset, TimeZone, Timelike, Utc,
+    DateTime, Datelike, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone,
+    Timelike, Utc,
 };
 use pyo3::{
     exceptions,
@@ -30,7 +30,7 @@ lazy_static! {
     };
 }
 
-#[pyclass]
+#[pyclass(subclass)]
 #[pyo3(
     text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"local\")"
 )]
