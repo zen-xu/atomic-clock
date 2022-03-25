@@ -411,10 +411,10 @@ class AtomicClock:
             >>> utc.to('-07:00')
             <AtomicClock [2022-03-23T05:36:32.198831-07:00]>
             >>> utc.to('local').to('utc')
-            <Arrow [2013-05-09T03:49:12.311072+00:00]>
+            <AtomicClock [2013-05-09T03:49:12.311072+00:00]>
         """
     def format(self, fmt: str = "%Y-%m-%d %H:%M:%S%Z") -> str:
-        """Returns a string representation of the :class:`Arrow <arrow.arrow.Arrow>` object,
+        """Returns a string representation of the :class:`AtomicClock <atomic_clock.AtomicClock>` object,
         formatted according to the provided format string.
 
         Visit https://docs.rs/chrono/latest/chrono/format/strftime/index.html to get more formatter details.
