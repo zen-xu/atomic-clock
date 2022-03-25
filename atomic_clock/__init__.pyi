@@ -461,6 +461,36 @@ class AtomicClock:
             >>> shanghai.naive
             datetime.datetime(2022, 3, 22, 5, 54, 13, 294995)
         """
+    def is_between(
+        self,
+        start: AtomicClock,
+        end: AtomicClock,
+        bounds: Literal["[]", "()", "[)", "(]"] = "()",
+    ) -> bool:
+        """Returns a boolean denoting whether the :class:`AtomicClock <atomic_clock.AtomicClock>` object is between
+        the start and end limits.
+
+        :param start: an :class:`AtomicClock <atomic_clock.AtomicClock>` object.
+        :param end: an :class:`AtomicClock <atomic_clock.AtomicClock>` object.
+        :param bounds: (optional) a ``str`` of either '()', '(]', '[)', or '[]' that specifies
+            whether to include or exclude the start and end values in the range. '(' excludes
+            the start, '[' includes the start, ')' excludes the end, and ']' includes the end.
+            If the bounds are not specified, the default bound '()' is used.
+
+        Usage::
+            >>> start = AtomicClock(2013, 5, 5, 12, 30, 10)
+            >>> end = AtomicClock(2013, 5, 5, 12, 30, 36)
+            >>> AtomicClock(2013, 5, 5, 12, 30, 27).is_between(start, end)
+            True
+            >>> start = AtomicClock(2013, 5, 5)
+            >>> end = AtomicClock(2013, 5, 8)
+            >>> AtomicClock(2013, 5, 8).is_between(start, end, '[]')
+            True
+            >>> start = AtomicClock(2013, 5, 5)
+            >>> end = AtomicClock(2013, 5, 8)
+            >>> AtomicClock(2013, 5, 8).is_between(start, end, '[)')
+            False
+        """
     def timestamp(self) -> float:
         """Returns a timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
         object, in UTC time.

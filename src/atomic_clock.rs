@@ -242,6 +242,12 @@ impl AtomicClock {
     }
 
     // methods
+    #[args(bounds = "Bounds::BothExclude")]
+    #[pyo3(text_signature = "(start, end, bounds: \"()\")")]
+    fn is_between(&self, start: &Self, end: &Self, bounds: Bounds) -> bool {
+        bounds.is_between(&self.datetime, &start.datetime, &end.datetime)
+    }
+
     fn timestamp(&self) -> f64 {
         let nan_timestamp = Decimal::from_i64(self.datetime.timestamp_nanos()).unwrap();
         nan_timestamp
@@ -613,5 +619,53 @@ impl IsoCalendarDateIter {
 
     fn __next__(mut slf: PyRefMut<Self>) -> Option<u32> {
         slf.inner.next()
+    }
+}
+
+enum Bounds {
+    BothInclude,
+    BothExclude,
+    StartInclude,
+    EndInclude,
+}
+
+impl FromPyObject<'_> for Bounds {
+    fn extract<'source>(ob: &pyo3::PyAny) -> PyResult<Self> {
+        let bound = ob.extract::<&str>()?;
+        let bound = match bound {
+            "[]" => Self::BothInclude,
+            "()" => Self::BothExclude,
+            "[)" => Self::StartInclude,
+            "(]" => Self::EndInclude,
+            _ => {
+                return Err(exceptions::PyValueError::new_err(
+                    "invalid bound, valid bound should be '[]', '()', '[)' and '(]'",
+                ))
+            }
+        };
+        Ok(bound)
+    }
+}
+
+impl Bounds {
+    fn is_between(&self, dt: &DateTime<Tz>, start: &DateTime<Tz>, end: &DateTime<Tz>) -> bool {
+        match self {
+            Self::BothInclude => {
+                start.timestamp_nanos() <= dt.timestamp_nanos()
+                    && dt.timestamp_nanos() <= end.timestamp_nanos()
+            }
+            Self::BothExclude => {
+                start.timestamp_nanos() < dt.timestamp_nanos()
+                    && dt.timestamp_nanos() < end.timestamp_nanos()
+            }
+            Self::StartInclude => {
+                start.timestamp_nanos() <= dt.timestamp_nanos()
+                    && dt.timestamp_nanos() < end.timestamp_nanos()
+            }
+            Self::EndInclude => {
+                start.timestamp_nanos() < dt.timestamp_nanos()
+                    && dt.timestamp_nanos() <= end.timestamp_nanos()
+            }
+        }
     }
 }
