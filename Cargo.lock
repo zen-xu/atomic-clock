@@ -16,6 +16,7 @@ dependencies = [
  "chrono-tz",
  "lazy_static",
  "pyo3",
+ "relativedelta",
  "rust_decimal",
 ]
 
@@ -82,6 +83,12 @@ dependencies = [
  "libc",
  "wasi",
 ]
+
+[[package]]
+name = "impl_ops"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90f97a5f38dd3ccfbe7aa80f4a0c00930f21b922c74195be0201c51028f22dcf"
 
 [[package]]
 name = "indoc"
@@ -356,6 +363,17 @@ name = "regex-syntax"
 version = "0.6.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
+
+[[package]]
+name = "relativedelta"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbb4ee7e0d907982cf67705999efbf4f96477231987ba5ac610dbfa86203856e"
+dependencies = [
+ "chrono",
+ "impl_ops",
+ "num-integer",
+]
 
 [[package]]
 name = "rust_decimal"

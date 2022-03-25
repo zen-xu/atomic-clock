@@ -12,6 +12,7 @@ use pyo3::{
     prelude::*,
     types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyType, PyTzInfo},
 };
+use relativedelta::RelativeDelta;
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
@@ -436,6 +437,66 @@ impl AtomicClock {
             obj.tz = tz;
         }
 
+        Ok(obj)
+    }
+
+    #[args(
+        years = 0,
+        months = 0,
+        days = 0,
+        hours = 0,
+        minutes = 0,
+        seconds = 0,
+        microseconds = 0,
+        weeks = 0,
+        quarters = 0
+    )]
+    #[pyo3(
+        text_signature = "(*, years=0, months=0, days=0, hours=0, minutes=0, seconds=0, microseconds=0, weeks=0, quarters=0, weekday=None)"
+    )]
+    #[allow(clippy::too_many_arguments)]
+    fn shift(
+        &self,
+        years: i32,
+        months: i64,
+        days: i64,
+        hours: i64,
+        minutes: i64,
+        seconds: i64,
+        microseconds: i64,
+        weeks: i64,
+        quarters: i64,
+        weekday: Option<u32>,
+    ) -> PyResult<Self> {
+        let mut obj = self.clone();
+
+        let delta = RelativeDelta::with_years(years)
+            .and_months(months + quarters * 3)
+            .and_days(days + weeks * 7)
+            .and_hours(hours)
+            .and_minutes(minutes)
+            .and_seconds(seconds)
+            .and_nanoseconds(microseconds * 1000)
+            .new();
+
+        obj.datetime = obj.datetime + delta;
+
+        if let Some(weekday) = weekday {
+            if !matches!(weekday, 0..=6) {
+                return Err(exceptions::PyValueError::new_err(
+                    "invalid weekday, valid weekday should be 0..6",
+                ));
+            }
+
+            let current_weekday = obj.datetime.weekday().num_days_from_monday();
+            if current_weekday <= weekday {
+                obj.datetime = obj.datetime + Duration::days((weekday - current_weekday) as i64)
+            } else {
+                let jumpdays =
+                    (current_weekday - (current_weekday - weekday)) + (6 - current_weekday) + 1;
+                obj.datetime = obj.datetime + Duration::days(jumpdays as i64);
+            }
+        }
         Ok(obj)
     }
 

@@ -2,10 +2,20 @@ from __future__ import annotations
 
 import datetime as dt
 
+from enum import IntEnum
 from time import struct_time
 from typing import Literal
 from typing import Optional
 from typing import Tuple
+
+class Weekday(IntEnum):
+    Mon = 0
+    Tue = 1
+    Wed = 2
+    Thu = 3
+    Fri = 4
+    Sat = 5
+    Sun = 6
 
 class AtomicClock:
     """An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
@@ -331,6 +341,47 @@ class AtomicClock:
 
             >>> now.replace(tzinfo="local")
             <AtomicClock [2021-08-24T22:44:51.560065+08:00]>
+        """
+    def shift(
+        self,
+        *,
+        years: int = 0,
+        months: int = 0,
+        days: int = 0,
+        hours: int = 0,
+        minutes: int = 0,
+        seconds: int = 0,
+        microseconds: int = 0,
+        weeks: int = 0,
+        quarters: int = 0,
+        weekday: Literal[0, 1, 2, 3, 4, 5, 6] | Weekday | None = None,
+    ) -> AtomicClock:
+        """Returns a new :class:`AtomicClock <atomic_clock.AtomicClock>` object with attributes updated
+        according to inputs.
+
+        Use pluralized property names to relatively shift their current value:
+
+        >>> from atomic_clock import AtomicClock
+        >>> now = AtomicClock.utcnow()
+        >>> now
+        <AtomicClock [2022-03-25T10:29:11.634832+00:00]>
+        >>> arw.shift(years=1, months=-1)
+        <AtomicClock [2023-02-25T10:29:11.634832+00:00]>
+
+        Day-of-the-week relative shifting can use either Python's weekday numbers
+        (Monday = 0, Tuesday = 1 .. Sunday = 6) or using day instances (Mon, Tue .. Sun).
+        When using weekday numbers, the returned date will always be greater than or equal
+        to the starting date.
+
+        Using the above code (which is a Saturday) and asking it to shift to Saturday:
+
+        >>> now.shift(weekday=5)
+        <AtomicClock [2022-03-26T10:29:11.634832+00:00]>
+
+        While asking for a Monday:
+
+        >>> now.shift(weekday=0)
+        <AtomicClock [2022-03-28T10:29:11.634832+00:00]>
         """
     def for_json(self) -> str:
         """Serializes for the ``for_json`` protocol of simplejson.
