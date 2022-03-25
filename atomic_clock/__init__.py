@@ -18,5 +18,6 @@ class Weekday(IntEnum):
 __all__ = [
     "AtomicClock",
     "Tz",
+    "Weekday",
     "__version__",
 ]
