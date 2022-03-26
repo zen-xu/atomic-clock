@@ -10,7 +10,7 @@ use chrono::{
 use pyo3::{
     exceptions,
     prelude::*,
-    types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyType, PyTzInfo},
+    types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyTzInfo},
 };
 use relativedelta::RelativeDelta;
 use rust_decimal::{
@@ -94,7 +94,7 @@ impl AtomicClock {
     #[staticmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
-    pub fn now(py: Python, tzinfo: TzInfo) -> PyResult<Self> {
+    fn now(py: Python, tzinfo: TzInfo) -> PyResult<Self> {
         let now = Local::now();
         let tz = Tz::new(py, tzinfo)?;
         let datetime = tz.from_utc_datetime(&now.naive_utc());
@@ -656,4 +656,15 @@ impl Bounds {
             }
         }
     }
+}
+
+#[pyfunction(tzinfo = "TzInfo::String(\"local\".to_string())")]
+#[pyo3(text_signature = "(tzinfo = \"local\")")]
+pub fn now(py: Python, tzinfo: TzInfo) -> PyResult<AtomicClock> {
+    AtomicClock::now(py, tzinfo)
+}
+
+#[pyfunction]
+pub fn utcnow() -> PyResult<AtomicClock> {
+    AtomicClock::utcnow()
 }

@@ -529,3 +529,29 @@ class Tz(dt.tzinfo):
     """
 
     def __init__(self, tzinfo: str) -> None: ...
+
+def utcnow() -> AtomicClock:
+    """Calls the default :class:`AtomicClock <atomic_clock.AtomicClock>` ``utcnow`` staticmethod.
+
+    Usage::
+        >>> import atomic_clock
+        >>> atomic_clock.utcnow()
+        <AtomicClock [2022-03-26T14:21:50.255157+00:00]>
+    """
+
+def now(tz: str | dt.tzinfo | Tz = "local") -> AtomicClock:
+    """Calls the default :class:`AtomicClock <atomic_clock.AtomicClock>` ``now`` staticmethod.
+
+    :param tz: (optional) A :ref:`timezone expression <tz-expr>`.  Defaults to local time.
+
+    Usage::
+        >>> import atomic_clock
+        >>> atomic_clock.now()
+        <AtomicClock [2022-03-26T22:19:55.370497+08:00]>
+        >>> atomic_clock.now('US/Pacific')
+        <AtomicClock [2022-03-26T07:20:09.644612-07:00]>
+        >>> atomic_clock.now('+02:00')
+        <AtomicClock [2022-03-26T16:20:24.667113+02:00]>
+        >>> atomic_clock.now('local')
+        <AtomicClock [2022-03-26T22:19:55.370497+08:00]>
+    """

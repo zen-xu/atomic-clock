@@ -6,7 +6,7 @@ extern crate lazy_static;
 
 use pyo3::prelude::*;
 
-use atomic_clock::AtomicClock;
+use atomic_clock::{now, utcnow, AtomicClock};
 use tz::Tz;
 
 /// A Python module implemented in Rust.
@@ -14,6 +14,8 @@ use tz::Tz;
 fn _atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AtomicClock>()?;
     m.add_class::<Tz>()?;
+    m.add_function(wrap_pyfunction!(now, m)?)?;
+    m.add_function(wrap_pyfunction!(utcnow, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }
