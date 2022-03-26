@@ -59,8 +59,8 @@ class AtomicClock:
         microsecond: int = 0,
         tzinfo: str | dt.tzinfo = "local",
     ) -> None: ...
-    @classmethod
-    def now(cls, tzinfo: str | dt.tzinfo | Tz = "local") -> AtomicClock:
+    @staticmethod
+    def now(tzinfo: str | dt.tzinfo | Tz = "local") -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing "now" in the given
         timezone.
 
@@ -79,8 +79,8 @@ class AtomicClock:
             >>> AtomicClock.now('Asia/Shanghai')
             <AtomicClock [2022-03-21T12:57:43.324231+08:00]>
         """
-    @classmethod
-    def utcnow(cls) -> AtomicClock:
+    @staticmethod
+    def utcnow() -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing "now" in UTC
         timezone.
 
@@ -88,11 +88,9 @@ class AtomicClock:
             >>> AtomicClock.utcnow()
             <AtomicClock [2022-03-21T04:58:42.796864+00:00]>
         """
-    @classmethod
+    @staticmethod
     def fromtimestamp(
-        cls,
-        timestamp: float,
-        tzinfo: str | dt.tzinfo | Tz = "local",
+        timestamp: float, tzinfo: str | dt.tzinfo | Tz = "local"
     ) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a timestamp, converted to
         the given timezone.
@@ -109,18 +107,15 @@ class AtomicClock:
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
         """
-    @classmethod
-    def utcfromtimestamp(
-        cls,
-        timestamp: float,
-    ) -> AtomicClock:
+    @staticmethod
+    def utcfromtimestamp(timestamp: float) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a timestamp in UTC time
 
         :param timestamp: an float that converts to.
         """
-    @classmethod
+    @staticmethod
     def fromdatetime(
-        cls, dt: dt.datetime, tzinfo: str | dt.tzinfo | Tz = "utc"
+        dt: dt.datetime, tzinfo: str | dt.tzinfo | Tz = "utc"
     ) -> AtomicClock:
         """Constructs an :class:`atomic_clock <atomic_clock.AtomicClock>` object from a ``datetime`` and
         optional replacement timezone.
@@ -144,8 +139,8 @@ class AtomicClock:
             >>> AtomicClock.fromdatetime(dt)
             <AtomicClock [2022-03-22T00:39:02.316809+08:00]>
         """
-    @classmethod
-    def fromdate(cls, dt: dt.date, tzinfo: str | dt.tzinfo | Tz = "utc") -> AtomicClock:
+    @staticmethod
+    def fromdate(dt: dt.date, tzinfo: str | dt.tzinfo | Tz = "utc") -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomicClock>` object from a ``date`` and optional
         replacement timezone.  All time values are set to 0.
 
@@ -161,9 +156,9 @@ class AtomicClock:
             - A ``str`` in ISO 8601 style, as in '+07:00'.
             - A ``str``, one of the following:  'local', 'utc', 'UTC'.
         """
-    @classmethod
+    @staticmethod
     def strptime(
-        cls, date_str: str, fmt: str, tzinfo: str | dt.tzinfo | Tz | None = None
+        date_str: str, fmt: str, tzinfo: str | dt.tzinfo | Tz | None = None
     ) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomiClock>` object from a date string and format,
         in the style of ``datetime.strptime``.  Optionally replaces the parsed timezone.
@@ -177,8 +172,8 @@ class AtomicClock:
             >>> AtomicClock.strptime('20-01-2019 15:49:10', '%d-%m-%Y %H:%M:%S')
             <AtomicClock [2019-01-20T15:49:10+00:00]>
         """
-    @classmethod
-    def fromordinal(cls, ordinal) -> AtomicClock:
+    @staticmethod
+    def fromordinal(ordinal) -> AtomicClock:
         """Constructs an :class:`AtomicClock <atomic_clock.AtomiClock>` object corresponding
         to the Gregorian Ordinal.
 

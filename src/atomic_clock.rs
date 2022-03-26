@@ -90,20 +90,19 @@ impl AtomicClock {
         self.format(formatstr)
     }
 
-    // class methods
-
-    #[classmethod]
+    // static methods
+    #[staticmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
-    fn now(_cls: &PyType, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
+    pub fn now(py: Python, tzinfo: TzInfo) -> PyResult<Self> {
         let now = Local::now();
         let tz = Tz::new(py, tzinfo)?;
         let datetime = tz.from_utc_datetime(&now.naive_utc());
         Ok(Self { datetime, tz })
     }
 
-    #[classmethod]
-    fn utcnow(_cls: &PyType) -> PyResult<Self> {
+    #[staticmethod]
+    pub fn utcnow() -> PyResult<Self> {
         let now = Utc::now();
         let datetime = (*UTC_TZ).from_utc_datetime(&now.naive_utc());
         Ok(Self {
@@ -112,10 +111,10 @@ impl AtomicClock {
         })
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(timestamp, tzinfo = \"local\")")]
-    fn fromtimestamp(_cls: &PyType, py: Python, timestamp: f64, tzinfo: TzInfo) -> PyResult<Self> {
+    fn fromtimestamp(py: Python, timestamp: f64, tzinfo: TzInfo) -> PyResult<Self> {
         let tz = Tz::new(py, tzinfo)?;
         let mut timestamp = Decimal::from_f64(timestamp).unwrap();
         if timestamp.scale() > 0 {
@@ -131,9 +130,9 @@ impl AtomicClock {
         Ok(Self { datetime, tz })
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(text_signature = "(timestamp)")]
-    fn utcfromtimestamp(_cls: &PyType, timestamp: f64) -> PyResult<Self> {
+    fn utcfromtimestamp(timestamp: f64) -> PyResult<Self> {
         let mut timestamp = Decimal::from_f64(timestamp).unwrap();
         if timestamp.scale() > 0 {
             timestamp.set_scale(6).unwrap();
@@ -151,15 +150,10 @@ impl AtomicClock {
         })
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[args(tzinfo = "None")]
     #[pyo3(text_signature = "(dt, tzinfo = \"None\")")]
-    fn fromdatetime(
-        _cls: &PyType,
-        py: Python,
-        dt: &PyDateTime,
-        tzinfo: Option<TzInfo>,
-    ) -> PyResult<Self> {
+    fn fromdatetime(py: Python, dt: &PyDateTime, tzinfo: Option<TzInfo>) -> PyResult<Self> {
         let tz = {
             let tzinfo = if let Some(tzinfo) = tzinfo {
                 tzinfo
@@ -188,10 +182,10 @@ impl AtomicClock {
         })
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"UTC\"))")]
     #[pyo3(text_signature = "(date, tzinfo = \"UTC\")")]
-    fn fromdate(_cls: &PyType, py: Python, date: &PyDate, tzinfo: TzInfo) -> PyResult<Self> {
+    fn fromdate(py: Python, date: &PyDate, tzinfo: TzInfo) -> PyResult<Self> {
         let tz = Tz::new(py, tzinfo)?;
         let naive = NaiveDate::from_ymd(
             date.get_year(),
@@ -206,15 +200,9 @@ impl AtomicClock {
         })
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(text_signature = "ordinal")]
-    fn strptime(
-        _cls: &PyType,
-        py: Python,
-        date_str: &str,
-        fmt: &str,
-        tzinfo: Option<TzInfo>,
-    ) -> PyResult<Self> {
+    fn strptime(py: Python, date_str: &str, fmt: &str, tzinfo: Option<TzInfo>) -> PyResult<Self> {
         let tzinfo = tzinfo
             .or_else(|| Some(TzInfo::String("UTC".to_string())))
             .unwrap();
@@ -225,9 +213,9 @@ impl AtomicClock {
         Ok(Self { datetime, tz })
     }
 
-    #[classmethod]
+    #[staticmethod]
     #[pyo3(text_signature = "ordinal")]
-    fn fromordinal(_cls: &PyType, ordinal: i64) -> PyResult<Self> {
+    fn fromordinal(ordinal: i64) -> PyResult<Self> {
         if !matches!(ordinal, MIN_ORDINAL..=MAX_ORDINAL) {
             return Err(exceptions::PyValueError::new_err(format!(
                 "ordinal {ordinal} is out of range"
