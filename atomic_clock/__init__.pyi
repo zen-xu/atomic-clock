@@ -5,6 +5,7 @@ import datetime as dt
 from enum import IntEnum
 from time import struct_time
 from typing import Any
+from typing import Generator
 from typing import Literal
 from typing import Optional
 from typing import Tuple
@@ -185,6 +186,55 @@ class AtomicClock:
         Usage::
             >>> AtomicClock.fromordinal(738236)
             <AtomicClock [2022-03-22T00:00:00+00:00]>
+        """
+    @staticmethod
+    def range(
+        frame: Literal[
+            "year", "month", "day", "hour", "minute", "second", "microsecond"
+        ],
+        start: AtomicClock,
+        end: AtomicClock | None = None,
+        *,
+        tz: str | dt.tzinfo | Tz | None = None,
+        limit: int | None = None,
+    ) -> Generator[AtomicClock, None, None]:
+        """Returns an iterator of :class:`AtomicClock <atomic_clock.AtomicClock>` objects, representing
+        points in time between two inputs.
+
+        :param frame: The timeframe.  Can be any ``datetime`` property (day, hour, minute...).
+        :param start:  the start of the range.
+        :param end: (optional) the end of the range.
+        :param tz: (optional) A :ref:`timezone expression <tz-expr>`.  Defaults to
+            ``start``'s timezone.
+        :param limit: (optional) A maximum number of tuples to return.
+
+        **NOTE**: The ``end`` or ``limit`` must be provided.  Call with ``end`` alone to
+        return the entire range.  Call with ``limit`` alone to return a maximum # of results from
+        the start.  Call with both to cap a range at a maximum # of results.
+
+        **NOTE**: ``tz`` internally **replaces** the timezones of both ``start`` and ``end`` before
+        iterating.
+
+        Usage::
+            >>> start = AtomicClock(2013, 5, 5, 12, 30)
+            >>> end = AtomicClock(2013, 5, 5, 17, 15)
+            >>> for r in AtomicClock.range('hour', start, end):
+            ...     print(repr(r))
+            ...
+            <AtomicClock [2013-05-05T12:30:00+00:00]>
+            <AtomicClock [2013-05-05T13:30:00+00:00]>
+            <AtomicClock [2013-05-05T14:30:00+00:00]>
+            <AtomicClock [2013-05-05T15:30:00+00:00]>
+            <AtomicClock [2013-05-05T16:30:00+00:00]>
+
+        **NOTE**: Unlike Python's ``range``, ``end`` *may* be included in the returned iterator::
+            >>> start = AtomicClock(2013, 5, 5, 12, 30)
+            >>> end = AtomicClock(2013, 5, 5, 13, 30)
+            >>> for r in AtomicClock.range('hour', start, end):
+            ...     print(repr(r))
+            ...
+            <AtomicClock [2013-05-05T12:30:00+00:00]>
+            <AtomicClock [2013-05-05T13:30:00+00:00]>
         """
     def date(self) -> dt.date:
         """Returns a ``date`` object with the same year, month and day.

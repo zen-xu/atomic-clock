@@ -257,6 +257,65 @@ impl AtomicClock {
         })
     }
 
+    #[staticmethod]
+    #[pyo3(text_signature = "(frame, start, end=None, tz=None, limit=None)")]
+    fn range(
+        py: Python,
+        frame: &str,
+        start: &Self,
+        end: Option<&Self>,
+        tz: Option<TzInfo>,
+        limit: Option<u64>,
+    ) -> PyResult<Py<DatetimeRangeIter>> {
+        let end_timestamp = if let Some(end) = end {
+            if end.timestamp() < start.timestamp() {
+                return Err(exceptions::PyValueError::new_err("end is less than start"));
+            }
+            end.timestamp()
+        } else {
+            f64::MAX
+        };
+        let limit = limit.or(Some(u64::MAX)).unwrap();
+        let start = if let Some(tz) = tz {
+            AtomicClock::new(
+                py,
+                start.datetime.year(),
+                start.datetime.month(),
+                start.datetime.day(),
+                start.datetime.hour(),
+                start.datetime.minute(),
+                start.datetime.second(),
+                start.datetime.nanosecond() / 1000,
+                tz,
+            )?
+        } else {
+            start.clone()
+        };
+
+        let frame = match frame {
+            "year" => RelativeDelta::with_years(1).new(),
+            "month" => RelativeDelta::with_months(1).new(),
+            "day" => RelativeDelta::with_days(1).new(),
+            "hour" => RelativeDelta::with_hours(1).new(),
+            "minute" => RelativeDelta::with_minutes(1).new(),
+            "second" => RelativeDelta::with_seconds(1).new(),
+            "microsecond" => RelativeDelta::with_nanoseconds(1000).new(),
+            "week" => RelativeDelta::with_days(7).new(),
+            "quarter" => RelativeDelta::with_months(3).new(),
+            _ => return Err(exceptions::PyValueError::new_err("invalid frame")),
+        };
+
+        let iter = DatetimeRangeIter {
+            current: start,
+            count: 0,
+            end_timestamp,
+            frame,
+            limit,
+        };
+
+        Py::new(py, iter)
+    }
+
     // methods
     #[args(bounds = "Bounds::BothExclude")]
     #[pyo3(text_signature = "(start, end, bounds: \"()\")")]
@@ -797,5 +856,35 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
         Ok(datetime.to(py, tzinfo)?)
     } else {
         Ok(datetime)
+    }
+}
+
+#[pyclass]
+struct DatetimeRangeIter {
+    current: AtomicClock,
+    end_timestamp: f64,
+    frame: RelativeDelta,
+    count: u64,
+    limit: u64,
+}
+
+#[pymethods]
+impl DatetimeRangeIter {
+    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<AtomicClock> {
+        if slf.count == slf.limit {
+            return None;
+        }
+        let result = slf.current.clone();
+        if slf.current.timestamp() <= slf.end_timestamp {
+            slf.count += 1;
+            slf.current.datetime = slf.current.datetime + slf.frame;
+            Some(result)
+        } else {
+            None
+        }
     }
 }
