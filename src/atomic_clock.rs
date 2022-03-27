@@ -203,86 +203,29 @@ impl AtomicClock {
     #[staticmethod]
     #[pyo3(text_signature = "ordinal")]
     fn strptime(py: Python, datetime: &str, fmt: &str, tzinfo: Option<TzInfo>) -> PyResult<Self> {
-        #[inline]
-        fn contains(fmt: &str, specifiers: Vec<&str>) -> bool {
-            for specifier in specifiers.iter() {
-                if fmt.contains(specifier) {
-                    return true;
-                }
-            }
-            false
-        }
+        use chrono::format::{parse, Parsed, StrftimeItems};
 
-        let mut defaults: Vec<&str> = vec![];
-        let mut specifiers: Vec<&str> = vec![];
-
-        // specify default year
-        if !contains(
-            fmt,
-            vec!["%Y", "%y", "%D", "%x", "%F", "%v", "%c", "%+", "%s"],
-        ) {
-            specifiers.push("%Y");
-            defaults.push("0");
-        }
-        // specify default month
-        if !contains(
-            fmt,
-            vec![
-                "%m", "%b", "%B", "%h", "%D", "%x", "%F", "%v", "%c", "%+", "%s",
-            ],
-        ) {
-            specifiers.push("%m");
-            defaults.push("1");
-        }
-        // specify default day
-        if !contains(
-            fmt,
-            vec!["%d", "%e", "%D", "%x", "%F", "%v", "%c", "%+", "%s"],
-        ) {
-            specifiers.push("%d");
-            defaults.push("1");
-        }
-        // specify default hour
-        if !contains(
-            fmt,
-            vec![
-                "%H", "%k", "%I", "%l", "%P", "%p", "%R", "%T", "%X", "%r", "%c", "%+", "%s",
-            ],
-        ) {
-            specifiers.push("%H");
-            defaults.push("0");
-        }
-        // specify default minute
-        if !contains(fmt, vec!["%M", "%R", "%T", "%X", "%r", "%c", "%+", "%s"]) {
-            specifiers.push("%M");
-            defaults.push("0");
-        }
-        // specify default second
-        if !contains(fmt, vec!["%S", "%X", "%r", "%c", "%+", "%s"]) {
-            specifiers.push("%S");
-            defaults.push("0");
-        }
-        // specify default fraction second
-        if !contains(
-            fmt,
-            vec![
-                "%f", "%.f", "%.3f", "%.6f", "%.9f", "%3f", "%6f", "%9f", "%+",
-            ],
-        ) {
-            specifiers.push("%.f");
-            defaults.push(".000000");
-        }
-        // specify default timezone
-        if !contains(fmt, vec!["%Z", "%z", "%:z", "%#z"]) {
-            specifiers.push("%z");
-            defaults.push("+00:00");
-        }
-
-        let datetime = format!("{} {}", datetime, defaults.join(" "));
-        let fmt = format!("{} {}", fmt, specifiers.join(" "));
-
-        let datetime = DateTime::parse_from_str(&datetime, &fmt)
+        let mut parsed = Parsed::new();
+        parse(&mut parsed, datetime, StrftimeItems::new(fmt))
             .map_err(|e| exceptions::PyValueError::new_err(e.to_string()))?;
+
+        // set default values
+        parsed.year = parsed.year.or(Some(0));
+        parsed.month = parsed.month.or(Some(1));
+        parsed.day = parsed.day.or(Some(1));
+        if parsed.hour_div_12.is_none() {
+            parsed.set_hour(0).unwrap();
+        }
+        parsed.minute = parsed.minute.or(Some(0));
+        parsed.second = parsed.second.or(Some(0));
+        parsed.nanosecond = parsed.nanosecond.or(Some(0));
+        parsed.offset = parsed.offset.or(Some(0));
+
+        let datetime = parsed
+            .to_datetime()
+            .map_err(|e| exceptions::PyValueError::new_err(e.to_string()))?;
+
+        // get tz
         let tz = {
             if let Some(tzinfo) = tzinfo {
                 Tz::new(py, tzinfo)?
