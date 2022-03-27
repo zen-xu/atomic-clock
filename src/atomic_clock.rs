@@ -713,23 +713,9 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
                 AtomicClock::fromtimestamp(py, timestamp as f64, TzInfo::String("UTC".to_string()))
             } else if let Ok(datetime) = arg.extract::<&str>() {
                 AtomicClock::strptime(py, datetime, "%Y-%m-%dT%H:%M:%S%.f%z", None)
-                    .or_else(|_| {
-                        AtomicClock::strptime(
-                            py,
-                            &format!("{}+00:00", datetime),
-                            "%Y-%m-%dT%H:%M:%S%.f%z",
-                            None,
-                        )
-                    })
+                    .or_else(|_| AtomicClock::strptime(py, datetime, "%Y-%m-%dT%H:%M:%S%.f", None))
+                    .or_else(|_| AtomicClock::strptime(py, datetime, "%Y%m%dT%H%M%S%.f", None))
                     .or_else(|_| AtomicClock::strptime(py, datetime, "%Y%m%dT%H%M%S%.f%z", None))
-                    .or_else(|_| {
-                        AtomicClock::strptime(
-                            py,
-                            &format!("{}+00:00", datetime),
-                            "%Y%m%dT%H%M%S%.f%z",
-                            None,
-                        )
-                    })
             } else if let Ok(tz) = arg.extract::<TzInfo>() {
                 AtomicClock::now(py, tz)
             } else if let Ok(datetime) = arg.extract::<&PyDateTime>() {
