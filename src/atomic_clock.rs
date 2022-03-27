@@ -201,7 +201,7 @@ impl AtomicClock {
     }
 
     #[staticmethod]
-    #[pyo3(text_signature = "ordinal")]
+    #[pyo3(text_signature = "(datetime, fmt, tzinfo=None)")]
     fn strptime(py: Python, datetime: &str, fmt: &str, tzinfo: Option<TzInfo>) -> PyResult<Self> {
         use chrono::format::{parse, Parsed, StrftimeItems};
 
@@ -242,7 +242,7 @@ impl AtomicClock {
     }
 
     #[staticmethod]
-    #[pyo3(text_signature = "ordinal")]
+    #[pyo3(text_signature = "(ordinal)")]
     fn fromordinal(ordinal: i64) -> PyResult<Self> {
         if !matches!(ordinal, MIN_ORDINAL..=MAX_ORDINAL) {
             return Err(exceptions::PyValueError::new_err(format!(
