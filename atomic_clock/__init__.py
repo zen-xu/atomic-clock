@@ -3,6 +3,7 @@ from enum import IntEnum
 from _atomic_clock import AtomicClock
 from _atomic_clock import Tz
 from _atomic_clock import __version__
+from _atomic_clock import get
 from _atomic_clock import now
 from _atomic_clock import utcnow
 
@@ -21,6 +22,7 @@ __all__ = [
     "AtomicClock",
     "Tz",
     "Weekday",
+    "get",
     "now",
     "utcnow",
     "__version__",

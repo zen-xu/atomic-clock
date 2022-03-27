@@ -4,9 +4,12 @@ import datetime as dt
 
 from enum import IntEnum
 from time import struct_time
+from typing import Any
 from typing import Literal
 from typing import Optional
 from typing import Tuple
+from typing import Union
+from typing import overload
 
 class Weekday(IntEnum):
     Mon = 0
@@ -554,4 +557,135 @@ def now(tz: str | dt.tzinfo | Tz = "local") -> AtomicClock:
         <AtomicClock [2022-03-26T16:20:24.667113+02:00]>
         >>> atomic_clock.now('local')
         <AtomicClock [2022-03-26T22:19:55.370497+08:00]>
+    """
+
+@overload
+def get(
+    *,
+    __tzinfo: dt.tzinfo | Tz | None = None,
+) -> AtomicClock: ...
+@overload
+def get(
+    __obj: Union[
+        AtomicClock,
+        dt.datetime,
+        dt.date,
+        int,
+        float,
+        str,
+        Tuple[int, int, int],
+    ],
+    *,
+    tzinfo: dt.tzinfo | Tz | str | None = None,
+) -> AtomicClock: ...
+@overload
+def get(
+    __arg1: dt.datetime | dt.date,
+    __tz: dt.tzinfo | Tz | str,
+) -> AtomicClock: ...
+@overload
+def get(
+    __datetime_str: str,
+    __fmt: str,
+) -> AtomicClock: ...
+@overload
+def get(
+    __year: int,
+    __month: int,
+    __day: int,
+    __hour: int = 0,
+    __minute: int = 0,
+    __second: int = 0,
+    __microsecond: int = 0,
+    __tzinfo: dt.tzinfo | Tz | str | None = None,
+) -> AtomicClock: ...
+def get(self, *args: Any, **kwargs: Any) -> AtomicClock:  # type: ignore
+    """Returns an :class:`AtomicClock <atomic_clock.AtomicClock>` object based on flexible inputs.
+
+    :param tzinfo: (optional) a :ref:`timezone expression <tz-expr>` or tzinfo object.
+        Replaces the timezone unless using an input form that is explicitly UTC or specifies
+        the timezone in a positional argument. Defaults to UTC.
+
+    Usage::
+
+        >>> import atomic_clock
+
+    **No inputs** to get current UTC time::
+
+        >>> atomic_clock.get()
+        <AtomicClock [2022-03-27T04:39:39.961630+00:00]>
+
+    **One** :class:`AtomicClock <atomic_clock.AtomicClock>` object, to get a copy.
+
+        >>> now = atomic_clock.utcnow()
+        >>> atomic_clock.get(now)
+        <AtomicClock [2022-03-27T04:39:39.961630+00:00]>
+
+    **One** ``float`` or ``int``, convertible to a floating-point timestamp, to get
+    that timestamp in UTC::
+
+        >>> atomic_clock.get(1367992474.293378)
+        <AtomicClock [2013-05-08T05:54:34.293378+00:00]>
+
+        >>> atomic_clock.get(1367992474)
+        <AtomicClock [2013-05-08T05:54:34+00:00]>
+
+    **One** ISO 8601-formatted ``str``, to parse it::
+
+        >>> atomic_clock.get('2013-09-29T01:26:43.830580')
+        <AtomicClock [2013-09-29T01:26:43.830580+00:00]>
+
+    **One** ISO 8601-formatted ``str``, in basic format, to parse it::
+
+        >>> atomic_clock.get('20160413T133656.456289')
+        <AtomicClock [2016-04-13T13:36:56.456289+00:00]>
+
+    **One** ``tzinfo``, to get the current time **converted** to that timezone::
+
+        >>> atomic_clock.get(Tz("local"))
+        <AtomicClock [2022-03-27T12:50:41.200265+08:00]>
+
+    **One** naive ``datetime``, to get that datetime in UTC::
+
+        >>> atomic_clock.get(datetime(2022, 1, 1))
+        <AtomicClock [2022-01-01T00:00:00+00:00]>
+
+    **One** aware ``datetime``, to get that datetime::
+
+        >>> atomic_clock.get(datetime(2022, 1, 1, tzinfo=Tz("local")))
+        <AtomicClock [2022-01-01T00:00:00+08:00]>
+
+    **One** naive ``date``, to get that date in UTC::
+
+        >>> atomic_clock.get(date(2022, 1, 1))
+        <AtomicClock [2022-01-01T00:00:00+00:00]>
+
+    **One** iso calendar ``tuple``, to get that week date in UTC::
+
+        >>> atomic_clock.get((2022, 2, 2))
+        <AtomicClock [2022-02-02T00:00:00+00:00]>
+
+    **Two** arguments, a naive or aware ``datetime``, and a replacement
+
+    :ref:`timezone expression <tz-expr>`::
+
+        >>> atomic_clock.get(datetime(2022, 1, 1), 'US/Pacific')
+        <AtomicClock [2022-01-01T00:00:00-07:00]>
+
+    **Two** arguments, a naive ``date``, and a replacement
+
+    :ref:`timezone expression <tz-expr>`::
+
+        >>> atomic_clock.get(date(2022, 1, 1), 'US/Pacific')
+        <AtomicClock [2022-01-01T00:00:00-07:00]>
+
+    **Two** arguments, both ``str``, to parse the first according to the format of the second::
+
+        >>> atomic_clock.get('2022-01-05 12:30:45 +0800', '%Y-%m-%d %H:%M:%S %z')
+        <AtomicClock [2022-01-05T12:30:45+08:00]>
+
+    **Three or more** arguments, as for the direct constructor of an ``AtomicClock`` object::
+
+        >>> atomic_clock.get(2022, 1, 5, 19, 4, 8)
+        <AtomicClock [2022-01-05T19:04:08+00:00]>
     """

@@ -10,7 +10,7 @@ use chrono::{
 use pyo3::{
     exceptions,
     prelude::*,
-    types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyTzInfo},
+    types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyTuple, PyTzInfo},
 };
 use relativedelta::RelativeDelta;
 use rust_decimal::{
@@ -203,14 +203,21 @@ impl AtomicClock {
     #[staticmethod]
     #[pyo3(text_signature = "ordinal")]
     fn strptime(py: Python, date_str: &str, fmt: &str, tzinfo: Option<TzInfo>) -> PyResult<Self> {
-        let tzinfo = tzinfo
-            .or_else(|| Some(TzInfo::String("UTC".to_string())))
-            .unwrap();
-        let tz = Tz::new(py, tzinfo)?;
-        let datetime = tz
-            .datetime_from_str(date_str, fmt)
+        let datetime = DateTime::parse_from_str(date_str, fmt)
             .map_err(|e| exceptions::PyValueError::new_err(e.to_string()))?;
-        Ok(Self { datetime, tz })
+        let tz = {
+            if let Some(tzinfo) = tzinfo {
+                Tz::new(py, tzinfo)?
+            } else {
+                let offset = datetime.offset();
+                Tz::from_offset(offset)
+            }
+        };
+
+        Ok(Self {
+            datetime: datetime.with_timezone(&tz),
+            tz,
+        })
     }
 
     #[staticmethod]
@@ -667,4 +674,121 @@ pub fn now(py: Python, tzinfo: TzInfo) -> PyResult<AtomicClock> {
 #[pyfunction]
 pub fn utcnow() -> PyResult<AtomicClock> {
     AtomicClock::utcnow()
+}
+
+#[pyfunction(py_args = "*", tzinfo = "None")]
+#[pyo3(text_signature = "(*args, tzinfo=None)")]
+pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<AtomicClock> {
+    let datetime = match py_args.len() {
+        0 => AtomicClock::utcnow(),
+        1 => {
+            let arg = &py_args[0];
+
+            if let Ok(dt) = arg.extract::<AtomicClock>() {
+                Ok(dt)
+            } else if let Ok(timestamp) = arg.extract::<f64>() {
+                AtomicClock::fromtimestamp(py, timestamp, TzInfo::String("UTC".to_string()))
+            } else if let Ok(timestamp) = arg.extract::<i64>() {
+                AtomicClock::fromtimestamp(py, timestamp as f64, TzInfo::String("UTC".to_string()))
+            } else if let Ok(datetime) = arg.extract::<&str>() {
+                AtomicClock::strptime(py, datetime, "%Y-%m-%dT%H:%M:%S%.f%z", None)
+                    .or_else(|_| {
+                        AtomicClock::strptime(
+                            py,
+                            &format!("{}+00:00", datetime),
+                            "%Y-%m-%dT%H:%M:%S%.f%z",
+                            None,
+                        )
+                    })
+                    .or_else(|_| AtomicClock::strptime(py, datetime, "%Y%m%dT%H%M%S%.f%z", None))
+                    .or_else(|_| {
+                        AtomicClock::strptime(
+                            py,
+                            &format!("{}+00:00", datetime),
+                            "%Y%m%dT%H%M%S%.f%z",
+                            None,
+                        )
+                    })
+            } else if let Ok(tz) = arg.extract::<TzInfo>() {
+                AtomicClock::now(py, tz)
+            } else if let Ok(datetime) = arg.extract::<&PyDateTime>() {
+                AtomicClock::fromdatetime(py, datetime, None)
+            } else if let Ok(date) = arg.extract::<&PyDate>() {
+                AtomicClock::fromdate(py, date, TzInfo::String("UTC".to_string()))
+            } else if let Ok((year, month, day)) = arg.extract::<(i32, u32, u32)>() {
+                AtomicClock::new(
+                    py,
+                    year,
+                    month,
+                    day,
+                    0,
+                    0,
+                    0,
+                    0,
+                    TzInfo::String("UTC".to_string()),
+                )
+            } else {
+                Err(exceptions::PyValueError::new_err(
+                    "failed to parse datetime",
+                ))
+            }
+        }
+        2 => {
+            let arg1 = &py_args[0];
+            let arg2 = &py_args[1];
+
+            if let (Ok(datetime), Ok(tz)) =
+                (arg1.extract::<&PyDateTime>(), arg2.extract::<TzInfo>())
+            {
+                AtomicClock::fromdatetime(py, datetime, Some(tz))
+            } else if let (Ok(date), Ok(tz)) = (arg1.extract::<&PyDate>(), arg2.extract::<TzInfo>())
+            {
+                AtomicClock::fromdate(py, date, tz)
+            } else if let (Ok(datetime_str), Ok(fmt_str)) =
+                (arg1.extract::<&str>(), arg2.extract::<&str>())
+            {
+                AtomicClock::strptime(py, datetime_str, fmt_str, None)
+            } else {
+                Err(exceptions::PyValueError::new_err(
+                    "failed to parse datetime",
+                ))
+            }
+        }
+        3..=8 => {
+            let year = py_args[0].extract::<i32>()?;
+            let mut datetime_args = [0, 0, 0, 0, 0, 0, 0];
+            for (idx, arg) in py_args[1..].into_iter().enumerate() {
+                datetime_args[idx] = arg.extract::<u32>()?;
+                if idx == 5 {
+                    break;
+                }
+            }
+            let tz = {
+                if py_args.len() == 8 {
+                    py_args[7].extract::<TzInfo>()?
+                } else {
+                    TzInfo::String("UTC".to_string())
+                }
+            };
+
+            AtomicClock::new(
+                py,
+                year,
+                datetime_args[0],
+                datetime_args[1],
+                datetime_args[2],
+                datetime_args[3],
+                datetime_args[4],
+                datetime_args[5],
+                tz,
+            )
+        }
+        _ => Err(exceptions::PyValueError::new_err("invalid args")),
+    }?;
+
+    if let Some(tzinfo) = tzinfo {
+        Ok(datetime.to(py, tzinfo)?)
+    } else {
+        Ok(datetime)
+    }
 }
