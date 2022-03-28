@@ -261,7 +261,7 @@ impl AtomicClock {
     #[pyo3(text_signature = "(frame, start, end=None, tz=None, limit=None)")]
     fn range(
         py: Python,
-        frame: &str,
+        frame: Frame,
         start: &Self,
         end: Option<&Self>,
         tz: Option<TzInfo>,
@@ -292,24 +292,11 @@ impl AtomicClock {
             start.clone()
         };
 
-        let frame = match frame {
-            "year" => RelativeDelta::with_years(1).new(),
-            "month" => RelativeDelta::with_months(1).new(),
-            "day" => RelativeDelta::with_days(1).new(),
-            "hour" => RelativeDelta::with_hours(1).new(),
-            "minute" => RelativeDelta::with_minutes(1).new(),
-            "second" => RelativeDelta::with_seconds(1).new(),
-            "microsecond" => RelativeDelta::with_nanoseconds(1000).new(),
-            "week" => RelativeDelta::with_days(7).new(),
-            "quarter" => RelativeDelta::with_months(3).new(),
-            _ => return Err(exceptions::PyValueError::new_err("invalid frame")),
-        };
-
         let iter = DatetimeRangeIter {
             current: start,
             count: 0,
             end_timestamp,
-            frame,
+            frame: frame.duration(),
             limit,
         };
 
@@ -886,5 +873,32 @@ impl DatetimeRangeIter {
         } else {
             None
         }
+    }
+}
+
+struct Frame(RelativeDelta);
+
+impl FromPyObject<'_> for Frame {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let frame = ob.extract::<&str>()?;
+        let frame = match frame {
+            "year" => RelativeDelta::with_years(1).new(),
+            "month" => RelativeDelta::with_months(1).new(),
+            "day" => RelativeDelta::with_days(1).new(),
+            "hour" => RelativeDelta::with_hours(1).new(),
+            "minute" => RelativeDelta::with_minutes(1).new(),
+            "second" => RelativeDelta::with_seconds(1).new(),
+            "microsecond" => RelativeDelta::with_nanoseconds(1000).new(),
+            "week" => RelativeDelta::with_days(7).new(),
+            "quarter" => RelativeDelta::with_months(3).new(),
+            _ => return Err(exceptions::PyValueError::new_err("invalid frame")),
+        };
+        Ok(Self(frame))
+    }
+}
+
+impl Frame {
+    fn duration(self) -> RelativeDelta {
+        self.0
     }
 }
