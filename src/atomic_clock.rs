@@ -648,6 +648,51 @@ impl AtomicClock {
     fn float_timestamp(&self) -> f64 {
         self.timestamp()
     }
+
+    #[getter]
+    fn year(&self) -> i32 {
+        self.datetime.year()
+    }
+
+    #[getter]
+    fn month(&self) -> u32 {
+        self.datetime.month()
+    }
+
+    #[getter]
+    fn day(&self) -> u32 {
+        self.datetime.day()
+    }
+
+    #[getter]
+    fn hour(&self) -> u32 {
+        self.datetime.hour()
+    }
+
+    #[getter]
+    fn minute(&self) -> u32 {
+        self.datetime.minute()
+    }
+
+    #[getter]
+    fn second(&self) -> u32 {
+        self.datetime.second()
+    }
+
+    #[getter]
+    fn microsecond(&self) -> u32 {
+        self.datetime.nanosecond() / 1000
+    }
+
+    #[getter]
+    fn week(&self) -> u32 {
+        self.isocalendar().week()
+    }
+
+    #[getter]
+    fn quarter(&self) -> u32 {
+        (self.month() - 1) / 3 + 1
+    }
 }
 
 #[pyclass]
