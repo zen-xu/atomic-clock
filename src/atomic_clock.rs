@@ -10,6 +10,7 @@ use chrono::{
 use pyo3::{
     exceptions,
     prelude::*,
+    pyclass::CompareOp,
     types::{PyDate, PyDateAccess, PyDateTime, PyDelta, PyTime, PyTimeAccess, PyTuple, PyTzInfo},
 };
 use relativedelta::RelativeDelta;
@@ -88,6 +89,22 @@ impl AtomicClock {
 
     fn __format__(&self, formatstr: &str) -> String {
         self.format(formatstr)
+    }
+
+    fn __richcmp__(&self, datetime: DateTimeLike, op: CompareOp) -> PyResult<bool> {
+        let left_timestamp = self.timestamp();
+        let right_timestamp = match datetime {
+            DateTimeLike::AtomicClock(d) => d.timestamp(),
+            DateTimeLike::PyDateTime(d) => Self::fromdatetime(d.py(), d, None).unwrap().timestamp(),
+        };
+        match op {
+            CompareOp::Lt => Ok(left_timestamp < right_timestamp),
+            CompareOp::Le => Ok(left_timestamp <= right_timestamp),
+            CompareOp::Eq => Ok(left_timestamp == right_timestamp),
+            CompareOp::Ne => Ok(left_timestamp != right_timestamp),
+            CompareOp::Gt => Ok(left_timestamp > right_timestamp),
+            CompareOp::Ge => Ok(left_timestamp >= right_timestamp),
+        }
     }
 
     // static methods
@@ -901,4 +918,10 @@ impl Frame {
     fn duration(self) -> RelativeDelta {
         self.0
     }
+}
+
+#[derive(FromPyObject)]
+enum DateTimeLike<'p> {
+    AtomicClock(AtomicClock),
+    PyDateTime(&'p PyDateTime),
 }
