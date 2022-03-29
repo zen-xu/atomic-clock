@@ -42,6 +42,7 @@ pub struct AtomicClock {
     tz: Tz,
 }
 
+// Constructors
 #[pymethods]
 impl AtomicClock {
     #[new]
@@ -79,39 +80,6 @@ impl AtomicClock {
         })
     }
 
-    fn __repr__(&self) -> String {
-        format!("<AtomicClock [{}]>", self.__str__())
-    }
-
-    fn __str__(&self) -> String {
-        self.datetime.to_rfc3339()
-    }
-
-    fn __format__(&self, formatstr: &str) -> String {
-        self.format(formatstr)
-    }
-
-    fn __richcmp__(&self, datetime: DateTimeLike, op: CompareOp) -> PyResult<bool> {
-        let left_timestamp = self.timestamp();
-        let right_timestamp = match datetime {
-            DateTimeLike::AtomicClock(d) => d.timestamp(),
-            DateTimeLike::PyDateTime(d) => Self::fromdatetime(d.py(), d, None).unwrap().timestamp(),
-        };
-        match op {
-            CompareOp::Lt => Ok(left_timestamp < right_timestamp),
-            CompareOp::Le => Ok(left_timestamp <= right_timestamp),
-            CompareOp::Eq => Ok(left_timestamp == right_timestamp),
-            CompareOp::Ne => Ok(left_timestamp != right_timestamp),
-            CompareOp::Gt => Ok(left_timestamp > right_timestamp),
-            CompareOp::Ge => Ok(left_timestamp >= right_timestamp),
-        }
-    }
-
-    fn __hash__(&self) -> i64 {
-        self.datetime.timestamp_nanos()
-    }
-
-    // static methods
     #[staticmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
@@ -323,8 +291,144 @@ impl AtomicClock {
 
         Py::new(py, iter)
     }
+}
 
-    // methods
+// Protocols
+#[pymethods]
+impl AtomicClock {
+    fn __repr__(&self) -> String {
+        format!("<AtomicClock [{}]>", self.__str__())
+    }
+
+    fn __str__(&self) -> String {
+        self.datetime.to_rfc3339()
+    }
+
+    fn __format__(&self, formatstr: &str) -> String {
+        self.format(formatstr)
+    }
+
+    fn __richcmp__(&self, datetime: DateTimeLike, op: CompareOp) -> PyResult<bool> {
+        let left_timestamp = self.timestamp();
+        let right_timestamp = match datetime {
+            DateTimeLike::AtomicClock(d) => d.timestamp(),
+            DateTimeLike::PyDateTime(d) => Self::fromdatetime(d.py(), d, None).unwrap().timestamp(),
+        };
+        match op {
+            CompareOp::Lt => Ok(left_timestamp < right_timestamp),
+            CompareOp::Le => Ok(left_timestamp <= right_timestamp),
+            CompareOp::Eq => Ok(left_timestamp == right_timestamp),
+            CompareOp::Ne => Ok(left_timestamp != right_timestamp),
+            CompareOp::Gt => Ok(left_timestamp > right_timestamp),
+            CompareOp::Ge => Ok(left_timestamp >= right_timestamp),
+        }
+    }
+
+    fn __hash__(&self) -> i64 {
+        self.datetime.timestamp_nanos()
+    }
+}
+
+// Properties
+#[pymethods]
+impl AtomicClock {
+    #[getter]
+    fn year(&self) -> i32 {
+        self.datetime.year()
+    }
+
+    #[getter]
+    fn month(&self) -> u32 {
+        self.datetime.month()
+    }
+
+    #[getter]
+    fn day(&self) -> u32 {
+        self.datetime.day()
+    }
+
+    #[getter]
+    fn hour(&self) -> u32 {
+        self.datetime.hour()
+    }
+
+    #[getter]
+    fn minute(&self) -> u32 {
+        self.datetime.minute()
+    }
+
+    #[getter]
+    fn second(&self) -> u32 {
+        self.datetime.second()
+    }
+
+    #[getter]
+    fn microsecond(&self) -> u32 {
+        self.datetime.nanosecond() / 1000
+    }
+
+    #[getter]
+    fn week(&self) -> u32 {
+        self.isocalendar().week()
+    }
+
+    #[getter]
+    fn quarter(&self) -> u32 {
+        (self.month() - 1) / 3 + 1
+    }
+
+    #[getter]
+    fn tzinfo(&self, py: Python) -> PyResult<Py<PyAny>> {
+        Ok(Py::new(py, self.tz.clone())?.to_object(py))
+    }
+
+    #[getter]
+    fn datetime<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
+        PyDateTime::new(
+            py,
+            self.datetime.year(),
+            self.datetime.month() as u8,
+            self.datetime.day() as u8,
+            self.datetime.hour() as u8,
+            self.datetime.minute() as u8,
+            self.datetime.second() as u8,
+            self.datetime.nanosecond() / 1000,
+            Some(&self.tzinfo(py).unwrap()),
+        )
+        .unwrap()
+    }
+
+    #[getter]
+    fn naive<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
+        let naive_datetime = self.datetime.naive_utc();
+        PyDateTime::new(
+            py,
+            naive_datetime.year(),
+            naive_datetime.month() as u8,
+            naive_datetime.day() as u8,
+            naive_datetime.hour() as u8,
+            naive_datetime.minute() as u8,
+            naive_datetime.second() as u8,
+            naive_datetime.nanosecond() / 1000,
+            None,
+        )
+        .unwrap()
+    }
+
+    #[getter]
+    fn int_timestamp(&self) -> i64 {
+        self.datetime.timestamp()
+    }
+
+    #[getter]
+    fn float_timestamp(&self) -> f64 {
+        self.timestamp()
+    }
+}
+
+// Methods
+#[pymethods]
+impl AtomicClock {
     #[args(bounds = "Bounds::BothExclude")]
     #[pyo3(text_signature = "(start, end, bounds: \"()\")")]
     fn is_between(&self, start: &Self, end: &Self, bounds: Bounds) -> bool {
@@ -602,100 +706,6 @@ impl AtomicClock {
     #[pyo3(text_signature = "(fmt = \"%Y-%m-%d %H:%M:%S%Z\")")]
     fn format(&self, fmt: &str) -> String {
         self.datetime.format(fmt).to_string()
-    }
-
-    // properties
-    #[getter]
-    fn tzinfo(&self, py: Python) -> PyResult<Py<PyAny>> {
-        Ok(Py::new(py, self.tz.clone())?.to_object(py))
-    }
-
-    #[getter]
-    fn datetime<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
-        PyDateTime::new(
-            py,
-            self.datetime.year(),
-            self.datetime.month() as u8,
-            self.datetime.day() as u8,
-            self.datetime.hour() as u8,
-            self.datetime.minute() as u8,
-            self.datetime.second() as u8,
-            self.datetime.nanosecond() / 1000,
-            Some(&self.tzinfo(py).unwrap()),
-        )
-        .unwrap()
-    }
-
-    #[getter]
-    fn naive<'p>(&self, py: Python<'p>) -> &'p PyDateTime {
-        let naive_datetime = self.datetime.naive_utc();
-        PyDateTime::new(
-            py,
-            naive_datetime.year(),
-            naive_datetime.month() as u8,
-            naive_datetime.day() as u8,
-            naive_datetime.hour() as u8,
-            naive_datetime.minute() as u8,
-            naive_datetime.second() as u8,
-            naive_datetime.nanosecond() / 1000,
-            None,
-        )
-        .unwrap()
-    }
-
-    #[getter]
-    fn int_timestamp(&self) -> i64 {
-        self.datetime.timestamp()
-    }
-
-    #[getter]
-    fn float_timestamp(&self) -> f64 {
-        self.timestamp()
-    }
-
-    #[getter]
-    fn year(&self) -> i32 {
-        self.datetime.year()
-    }
-
-    #[getter]
-    fn month(&self) -> u32 {
-        self.datetime.month()
-    }
-
-    #[getter]
-    fn day(&self) -> u32 {
-        self.datetime.day()
-    }
-
-    #[getter]
-    fn hour(&self) -> u32 {
-        self.datetime.hour()
-    }
-
-    #[getter]
-    fn minute(&self) -> u32 {
-        self.datetime.minute()
-    }
-
-    #[getter]
-    fn second(&self) -> u32 {
-        self.datetime.second()
-    }
-
-    #[getter]
-    fn microsecond(&self) -> u32 {
-        self.datetime.nanosecond() / 1000
-    }
-
-    #[getter]
-    fn week(&self) -> u32 {
-        self.isocalendar().week()
-    }
-
-    #[getter]
-    fn quarter(&self) -> u32 {
-        (self.month() - 1) / 3 + 1
     }
 }
 
