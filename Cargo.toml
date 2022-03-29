@@ -10,7 +10,7 @@ name = "_atomic_clock"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.16.1", features = ["extension-module"] }
+pyo3 = { version = "0.16.1", features = ["extension-module", "multiple-pymethods"] }
 chrono = "0.4"
 chrono-tz = "0.6"
 lazy_static = "1"
