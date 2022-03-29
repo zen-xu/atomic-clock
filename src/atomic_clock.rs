@@ -247,7 +247,8 @@ impl AtomicClock {
     }
 
     #[staticmethod]
-    #[pyo3(text_signature = "(frame, start, end=None, tz=None, limit=None)")]
+    #[args(frame, start, end, "*", tz = "None", limit = "None")]
+    #[pyo3(text_signature = "(frame, start, end=None, *, tz=None, limit=None)")]
     fn range(
         py: Python,
         frame: Frame,
@@ -557,6 +558,7 @@ impl AtomicClock {
         Clone::clone(self)
     }
 
+    #[args("*", year, month, day, hour, minute, second, microsecond, tzinfo)]
     #[pyo3(
         text_signature = "(*, year=None, month=None, day=None, hour=None, minute=None, second=None, microsecond=None, tzinfo=None)"
     )]
@@ -634,6 +636,7 @@ impl AtomicClock {
     }
 
     #[args(
+        "*",
         years = 0,
         months = 0,
         days = 0,

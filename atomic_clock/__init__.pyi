@@ -626,10 +626,7 @@ def now(tz: str | dt.tzinfo | Tz = "local") -> AtomicClock:
     """
 
 @overload
-def get(
-    *,
-    __tzinfo: dt.tzinfo | Tz | None = None,
-) -> AtomicClock: ...
+def get(__tzinfo: dt.tzinfo | Tz | None = None, /) -> AtomicClock: ...
 @overload
 def get(
     __obj: Union[
@@ -641,19 +638,16 @@ def get(
         str,
         Tuple[int, int, int],
     ],
+    /,
     *,
     tzinfo: dt.tzinfo | Tz | str | None = None,
 ) -> AtomicClock: ...
 @overload
 def get(
-    __arg1: dt.datetime | dt.date,
-    __tz: dt.tzinfo | Tz | str,
+    __arg1: dt.datetime | dt.date, __tz: dt.tzinfo | Tz | str, /
 ) -> AtomicClock: ...
 @overload
-def get(
-    __datetime_str: str,
-    __fmt: str,
-) -> AtomicClock: ...
+def get(__datetime_str: str, __fmt: str, /) -> AtomicClock: ...
 @overload
 def get(
     __year: int,
@@ -664,6 +658,7 @@ def get(
     __second: int = 0,
     __microsecond: int = 0,
     __tzinfo: dt.tzinfo | Tz | str | None = None,
+    /,
 ) -> AtomicClock: ...
 def get(self, *args: Any, **kwargs: Any) -> AtomicClock:  # type: ignore
     """Returns an :class:`AtomicClock <atomic_clock.AtomicClock>` object based on flexible inputs.
