@@ -107,6 +107,10 @@ impl AtomicClock {
         }
     }
 
+    fn __hash__(&self) -> i64 {
+        self.datetime.timestamp_nanos()
+    }
+
     // static methods
     #[staticmethod]
     #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
