@@ -586,6 +586,146 @@ impl AtomicClock {
         bounds.is_between(&self.datetime, &start.datetime, &end.datetime)
     }
 
+    #[args(
+        frame,
+        "*",
+        count = 1,
+        bounds = "Bounds::StartInclude",
+        exact = "false",
+        week_start = "1"
+    )]
+    #[pyo3(text_signature = "(frame, *, count=1, bounds=\"[)\", exact=False, week_start=0)")]
+    fn span(
+        &self,
+        py: Python,
+        frame: Frame,
+        count: i64,
+        bounds: Bounds,
+        exact: bool,
+        week_start: u32,
+    ) -> PyResult<(Self, Self)> {
+        if !matches!(week_start, 1..=7) {
+            return Err(exceptions::PyValueError::new_err(
+                "invalid week_start, valid week_start should be 1..7",
+            ));
+        }
+
+        let mut floor = if exact {
+            self.clone()
+        } else {
+            match frame {
+                Frame::Year => self.replace(
+                    py,
+                    None,
+                    Some(1),
+                    Some(1),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    None,
+                )?,
+                Frame::Month => self.replace(
+                    py,
+                    None,
+                    None,
+                    Some(1),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    None,
+                )?,
+                Frame::Day => self.replace(
+                    py,
+                    None,
+                    None,
+                    None,
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    None,
+                )?,
+                Frame::Hour => {
+                    self.replace(py, None, None, None, None, Some(0), Some(0), Some(0), None)?
+                }
+                Frame::Minute => {
+                    self.replace(py, None, None, None, None, None, Some(0), Some(0), None)?
+                }
+                Frame::Second => {
+                    self.replace(py, None, None, None, None, None, None, Some(0), None)?
+                }
+                Frame::Microsecond => {
+                    return Err(exceptions::PyValueError::new_err(
+                        "span doesn't support frame `microsecond`",
+                    ))
+                }
+                Frame::Week => {
+                    let floor = self.replace(
+                        py,
+                        None,
+                        None,
+                        None,
+                        Some(0),
+                        Some(0),
+                        Some(0),
+                        Some(0),
+                        None,
+                    )?;
+                    let delta = if week_start > self.isoweekday() { 7 } else { 0 };
+                    let days = -(self.isoweekday() as i64 - week_start as i64) - delta;
+                    floor.shift(0, 0, days, 0, 0, 0, 0, 0, 0, None)?
+                }
+                Frame::Quarter => self
+                    .replace(
+                        py,
+                        None,
+                        None,
+                        Some(1),
+                        Some(0),
+                        Some(0),
+                        Some(0),
+                        Some(0),
+                        None,
+                    )?
+                    .shift(
+                        0,
+                        -((self.month() - 1) as i64) % 3,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        None,
+                    )?,
+            }
+        };
+
+        let mut ceil = AtomicClock {
+            datetime: floor.datetime + frame.duration() * count as f64,
+            tz: floor.tz.clone(),
+        };
+
+        match bounds {
+            Bounds::BothInclude => (),
+            Bounds::BothExclude => {
+                floor = floor.shift(0, 0, 0, 0, 0, 0, 1, 0, 0, None)?;
+                ceil = ceil.shift(0, 0, 0, 0, 0, 0, -1, 0, 0, None)?;
+            }
+            Bounds::StartInclude => {
+                ceil = ceil.shift(0, 0, 0, 0, 0, 0, -1, 0, 0, None)?;
+            }
+            Bounds::EndInclude => {
+                floor = floor.shift(0, 0, 0, 0, 0, 0, 1, 0, 0, None)?;
+            }
+        }
+
+        Ok((floor, ceil))
+    }
+
     fn timestamp(&self) -> f64 {
         let nan_timestamp = Decimal::from_i64(self.datetime.timestamp_nanos()).unwrap();
         nan_timestamp

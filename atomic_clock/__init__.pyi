@@ -555,6 +555,55 @@ class AtomicClock:
             >>> AtomicClock(2013, 5, 8).is_between(start, end, '[)')
             False
         """
+    def span(
+        self,
+        frame: Literal[
+            "year", "quarter", "month", "week", "day", "hour", "minute", "second"
+        ],
+        *,
+        count: int = 1,
+        bounds: Literal["[]", "()", "[)", "(]"] = "[)",
+        exact: bool = False,
+        week_start: Literal[1, 2, 3, 4, 5, 6, 7] = 1,
+    ) -> Tuple[AtomicClock, AtomicClock]:
+        """Returns a tuple of two new :class:`AtomicClock <atomic_clock.AtomicClock>` objects, representing the timespan
+        of the :class:`AtomicClock <atomic_clock.AtomicClock>` object in a given timeframe.
+
+        :param frame: the timeframe.  Can be any ``datetime`` property (day, hour, minute...).
+        :param count: (optional) the number of frames to span.
+        :param bounds: (optional) a ``str`` of either '()', '(]', '[)', or '[]' that specifies
+            whether to include or exclude the start and end values in the span. '(' excludes
+            the start, '[' includes the start, ')' excludes the end, and ']' includes the end.
+            If the bounds are not specified, the default bound '[)' is used.
+        :param exact: (optional) whether to have the start of the timespan begin exactly
+            at the time specified by ``start`` and the end of the timespan truncated
+            so as not to extend beyond ``end``.
+        :param week_start: (optional) only used in combination with the week timeframe. Follows isoweekday() where
+            Monday is 1 and Sunday is 7.
+
+        Usage::
+
+            >>> atomic_clock.utcnow()
+            <AtomicClock [2022-03-30T14:35:00.266051+00:00]>
+
+            >>> atomic_clock.utcnow().span('hour')
+            (<AtomicClock [2022-03-30T14:00:00+00:00]>, <AtomicClock [2022-03-30T14:59:59.999999+00:00]>)
+
+            >>> atomic_clock.utcnow().span('day')
+            (<AtomicClock [2022-03-30T00:00:00+00:00]>, <AtomicClock [2022-03-30T23:59:59.999999+00:00]>)
+
+            >>> atomic_clock.utcnow().span('day', count=2)
+            (<AtomicClock [2022-03-30T00:00:00+00:00]>, <AtomicClock [2022-03-31T23:59:59.999999+00:00]>)
+
+            >>> atomic_clock.utcnow().span('day', bounds='[]')
+            (<AtomicClock [2022-03-30T00:00:00+00:00]>, <AtomicClock [2022-03-31T00:00:00+00:00]>)
+
+            >>> atomic_clock.utcnow().span('week')
+            (<AtomicClock [2022-03-28T00:00:00+00:00]>, <AtomicClock [2022-04-03T23:59:59.999999+00:00]>)
+
+            >>> atomic_clock.utcnow().span('week', week_start=6)
+            (<AtomicClock [2022-03-26T00:00:00+00:00]>, <AtomicClock [2022-04-01T23:59:59.999999+00:00]>)
+        """
     def timestamp(self) -> float:
         """Returns a timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
         object, in UTC time.
