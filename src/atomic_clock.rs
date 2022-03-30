@@ -726,6 +726,16 @@ impl AtomicClock {
         Ok((floor, ceil))
     }
 
+    #[pyo3(text_signature = "(frame)")]
+    fn floor(&self, py: Python, frame: Frame) -> PyResult<Self> {
+        Ok(self.span(py, frame, 1, Bounds::StartInclude, false, 1)?.0)
+    }
+
+    #[pyo3(text_signature = "(frame)")]
+    fn ceil(&self, py: Python, frame: Frame) -> PyResult<Self> {
+        Ok(self.span(py, frame, 1, Bounds::StartInclude, false, 1)?.1)
+    }
+
     fn timestamp(&self) -> f64 {
         let nan_timestamp = Decimal::from_i64(self.datetime.timestamp_nanos()).unwrap();
         nan_timestamp

@@ -604,6 +604,40 @@ class AtomicClock:
             >>> atomic_clock.utcnow().span('week', week_start=6)
             (<AtomicClock [2022-03-26T00:00:00+00:00]>, <AtomicClock [2022-04-01T23:59:59.999999+00:00]>)
         """
+    def floor(
+        self,
+        frame: Literal[
+            "year", "quarter", "month", "week", "day", "hour", "minute", "second"
+        ],
+    ) -> AtomicClock:
+        """Returns a new :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing the "floor"
+        of the timespan of the :class:`AtomicClock <atomic_clock.AtomicClock>` object in a given timeframe.
+        Equivalent to the first element in the 2-tuple returned by
+        :func:`span <atomic_clock.AtomicClock.span>`.
+
+        :param frame: the timeframe.  Can be any ``datetime`` property (day, hour, minute...).
+
+        Usage::
+            >>> atomic_clock.utcnow().floor('hour')
+            <AtomicClock [2022-03-30T14:00:00+00:00]>
+        """
+    def ceil(
+        self,
+        frame: Literal[
+            "year", "quarter", "month", "week", "day", "hour", "minute", "second"
+        ],
+    ) -> AtomicClock:
+        """Returns a new :class:`AtomicClock <atomic_clock.AtomicClock>` object, representing the "ceiling"
+        of the timespan of the :class:`AtomicClock <atomic_clock.AtomicClock>` object in a given timeframe.
+        Equivalent to the second element in the 2-tuple returned by
+        :func:`span <atomic_clock.AtomicClock.span>`.
+
+        :param frame: the timeframe.  Can be any ``datetime`` property (day, hour, minute...).
+
+        Usage::
+            >>> atomic_clock.utcnow().ceil('hour')
+            <AtomicClock [2022-03-30T14:59:59.999999+00:00]>
+        """
     def timestamp(self) -> float:
         """Returns a timestamp representation of the :class:`AtomicClock <atomic_clock.AtomiClock>`
         object, in UTC time.
