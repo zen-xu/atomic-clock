@@ -325,6 +325,156 @@ impl AtomicClock {
         }
     }
 
+    fn __add__(&self, delta: DeltaLike) -> PyResult<Self> {
+        match delta {
+            DeltaLike::RelativeDelta(PyRelativeDelta {
+                years,
+                months,
+                days,
+                hours,
+                minutes,
+                seconds,
+                microseconds,
+                weeks,
+                quarters,
+                weekday,
+            }) => self.shift(
+                years,
+                months,
+                days,
+                hours,
+                minutes,
+                seconds,
+                microseconds,
+                weeks,
+                quarters,
+                weekday,
+            ),
+            DeltaLike::PyDelta(delta) => {
+                let seconds = delta.call_method1("total_seconds", ())?.extract::<f64>()?;
+                let mut seconds = Decimal::from_f64(seconds).unwrap();
+                if seconds.scale() > 0 {
+                    seconds.set_scale(6).unwrap();
+                }
+                let microseconds = seconds.mul(Decimal::from_i64(1_000_000).unwrap());
+                self.shift(0, 0, 0, 0, 0, 0, microseconds.to_i64().unwrap(), 0, 0, None)
+            }
+        }
+    }
+
+    fn __radd__(&self, delta: DeltaLike) -> PyResult<Self> {
+        self.__add__(delta)
+    }
+
+    fn __sub__(&self, py: Python, obj: DateTimeOrDeltaLike) -> PyResult<Py<PyAny>> {
+        match obj {
+            DateTimeOrDeltaLike::DateTimeLike(datetime) => match datetime {
+                DateTimeLike::AtomicClock(datetime) => {
+                    let duration = self.datetime - datetime.datetime;
+                    let (days, hours, minutes, seconds, microseconds) =
+                        normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
+                    let delta = PyRelativeDelta::new(
+                        0,
+                        0,
+                        days,
+                        hours,
+                        minutes,
+                        seconds,
+                        microseconds,
+                        0,
+                        0,
+                        None,
+                    )?;
+                    Ok(Py::new(py, delta)?.to_object(py))
+                }
+                DateTimeLike::PyDateTime(datetime) => {
+                    let datetime = AtomicClock::fromdatetime(datetime.py(), datetime, None)?;
+                    let duration = self.datetime - datetime.datetime;
+                    let (days, hours, minutes, seconds, microseconds) =
+                        normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
+                    let delta = PyRelativeDelta::new(
+                        0,
+                        0,
+                        days,
+                        hours,
+                        minutes,
+                        seconds,
+                        microseconds,
+                        0,
+                        0,
+                        None,
+                    )?;
+                    Ok(Py::new(py, delta)?.to_object(py))
+                }
+            },
+            DateTimeOrDeltaLike::DeltaLike(delta) => match delta {
+                DeltaLike::RelativeDelta(delta) => {
+                    let datetime = self.__add__(DeltaLike::RelativeDelta(delta.__neg__()))?;
+                    Ok(Py::new(py, datetime)?.to_object(py))
+                }
+                DeltaLike::PyDelta(delta) => {
+                    let seconds = delta.call_method1("total_seconds", ())?.extract::<f64>()?;
+                    let mut seconds = Decimal::from_f64(seconds).unwrap();
+                    if seconds.scale() > 0 {
+                        seconds.set_scale(6).unwrap();
+                    }
+                    let microseconds = seconds.mul(Decimal::from_i64(1_000_000).unwrap());
+                    let datetime = self.shift(
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        -microseconds.to_i64().unwrap(),
+                        0,
+                        0,
+                        None,
+                    )?;
+                    Ok(Py::new(py, datetime)?.to_object(py))
+                }
+            },
+        }
+    }
+    fn __rsub__(&self, datetime: DateTimeLike) -> PyResult<PyRelativeDelta> {
+        match datetime {
+            DateTimeLike::AtomicClock(datetime) => {
+                let duration = datetime.datetime - self.datetime;
+                let (days, hours, minutes, seconds, microseconds) =
+                    normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
+                PyRelativeDelta::new(
+                    0,
+                    0,
+                    days,
+                    hours,
+                    minutes,
+                    seconds,
+                    microseconds,
+                    0,
+                    0,
+                    None,
+                )
+            }
+            DateTimeLike::PyDateTime(datetime) => {
+                let datetime = AtomicClock::fromdatetime(datetime.py(), datetime, None)?;
+                let duration = datetime.datetime - self.datetime;
+                let (days, hours, minutes, seconds, microseconds) =
+                    normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
+                PyRelativeDelta::new(
+                    0,
+                    0,
+                    days,
+                    hours,
+                    minutes,
+                    seconds,
+                    microseconds,
+                    0,
+                    0,
+                    None,
+                )
+            }
+        }
+    }
     fn __hash__(&self) -> i64 {
         self.datetime.timestamp_nanos()
     }
@@ -645,7 +795,8 @@ impl AtomicClock {
         seconds = 0,
         microseconds = 0,
         weeks = 0,
-        quarters = 0
+        quarters = 0,
+        weekday = "None"
     )]
     #[pyo3(
         text_signature = "(*, years=0, months=0, days=0, hours=0, minutes=0, seconds=0, microseconds=0, weeks=0, quarters=0, weekday=None)"
@@ -986,4 +1137,135 @@ impl Frame {
 enum DateTimeLike<'p> {
     AtomicClock(AtomicClock),
     PyDateTime(&'p PyDateTime),
+}
+
+#[pyclass(name = "RelativeDelta")]
+#[pyo3(
+    text_signature = "(*, years = 0, months = 0, days = 0, hours = 0, minutes = 0, seconds = 0, microseconds = 0, weeks = 0, quarters = 0)"
+)]
+#[derive(Clone)]
+pub struct PyRelativeDelta {
+    #[pyo3(get, set)]
+    years: i32,
+    #[pyo3(get, set)]
+    months: i64,
+    #[pyo3(get, set)]
+    days: i64,
+    #[pyo3(get, set)]
+    hours: i64,
+    #[pyo3(get, set)]
+    minutes: i64,
+    #[pyo3(get, set)]
+    seconds: i64,
+    #[pyo3(get, set)]
+    microseconds: i64,
+    #[pyo3(get, set)]
+    weeks: i64,
+    #[pyo3(get, set)]
+    quarters: i64,
+    #[pyo3(get, set)]
+    weekday: Option<u32>,
+}
+
+#[pymethods]
+impl PyRelativeDelta {
+    #[new]
+    #[args(
+        "*",
+        years = 0,
+        months = 0,
+        days = 0,
+        hours = 0,
+        minutes = 0,
+        seconds = 0,
+        microseconds = 0,
+        weeks = 0,
+        quarters = 0,
+        weekday = "None"
+    )]
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        years: i32,
+        months: i64,
+        days: i64,
+        hours: i64,
+        minutes: i64,
+        seconds: i64,
+        microseconds: i64,
+        weeks: i64,
+        quarters: i64,
+        weekday: Option<u32>,
+    ) -> PyResult<Self> {
+        if !matches!(weekday, Some(0..=6) | None) {
+            Err(exceptions::PyValueError::new_err(
+                "invalid weekday, valid weekday should be 0..6",
+            ))
+        } else {
+            Ok(Self {
+                years,
+                months,
+                days,
+                hours,
+                minutes,
+                seconds,
+                microseconds,
+                weeks,
+                quarters,
+                weekday,
+            })
+        }
+    }
+
+    fn clone(&self) -> Self {
+        Clone::clone(self)
+    }
+
+    fn __repr__(&self) -> String {
+        format!("<RelativeDelta [years={:+}, months={:+}, days={:+}, hours={:+}, minutes={:+}, seconds={:+}, microseconds={:+}, weeks={:+}, quarters={:+}, weekday={:+}]>",
+                self.years, self.months, self.days, self.hours, self.minutes, self.seconds, self.microseconds, self.weeks, self.quarters, self.weekday.map_or("None".to_string(), |w| w.to_string()))
+    }
+
+    fn __neg__(&self) -> Self {
+        Self {
+            years: -self.years,
+            months: -self.months,
+            days: -self.days,
+            hours: -self.hours,
+            minutes: -self.minutes,
+            seconds: -self.seconds,
+            microseconds: -self.microseconds,
+            weeks: -self.weeks,
+            quarters: -self.quarters,
+            weekday: self.weekday,
+        }
+    }
+}
+
+#[derive(FromPyObject)]
+enum DeltaLike<'p> {
+    RelativeDelta(PyRelativeDelta),
+    PyDelta(&'p PyDelta),
+}
+
+#[derive(FromPyObject)]
+enum DateTimeOrDeltaLike<'p> {
+    DateTimeLike(DateTimeLike<'p>),
+    DeltaLike(DeltaLike<'p>),
+}
+
+fn normalization_microseconds(microseconds: i64) -> (i64, i64, i64, i64, i64) {
+    let mut microseconds = microseconds;
+    let days = microseconds / (24_i64 * 60_i64 * 60_i64 * 1_000_000_i64);
+    microseconds -= days * (24_i64 * 60_i64 * 60_i64 * 1_000_000_i64);
+
+    let hours = microseconds / (60_i64 * 60_i64 * 1_000_000_i64);
+    microseconds -= hours * (60_i64 * 60_i64 * 1_000_000_i64);
+
+    let minutes = microseconds / (60_i64 * 1_000_000_i64);
+    microseconds -= minutes * (60_i64 * 1_000_000_i64);
+
+    let seconds = microseconds / 1_000_000_i64;
+    microseconds -= seconds * 1_000_000_i64;
+
+    (days, hours, minutes, seconds, microseconds)
 }

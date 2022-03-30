@@ -1,6 +1,7 @@
 from enum import IntEnum
 
 from _atomic_clock import AtomicClock
+from _atomic_clock import RelativeDelta
 from _atomic_clock import Tz
 from _atomic_clock import __version__
 from _atomic_clock import get
@@ -20,6 +21,7 @@ class Weekday(IntEnum):
 
 __all__ = [
     "AtomicClock",
+    "RelativeDelta",
     "Tz",
     "Weekday",
     "get",
