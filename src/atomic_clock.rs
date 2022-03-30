@@ -1106,30 +1106,50 @@ impl DatetimeRangeIter {
     }
 }
 
-struct Frame(RelativeDelta);
+enum Frame {
+    Year,
+    Month,
+    Day,
+    Hour,
+    Minute,
+    Second,
+    Microsecond,
+    Week,
+    Quarter,
+}
 
 impl FromPyObject<'_> for Frame {
     fn extract(ob: &PyAny) -> PyResult<Self> {
         let frame = ob.extract::<&str>()?;
         let frame = match frame {
-            "year" => RelativeDelta::with_years(1).new(),
-            "month" => RelativeDelta::with_months(1).new(),
-            "day" => RelativeDelta::with_days(1).new(),
-            "hour" => RelativeDelta::with_hours(1).new(),
-            "minute" => RelativeDelta::with_minutes(1).new(),
-            "second" => RelativeDelta::with_seconds(1).new(),
-            "microsecond" => RelativeDelta::with_nanoseconds(1000).new(),
-            "week" => RelativeDelta::with_days(7).new(),
-            "quarter" => RelativeDelta::with_months(3).new(),
+            "year" => Self::Year,
+            "month" => Self::Month,
+            "day" => Self::Day,
+            "hour" => Self::Hour,
+            "minute" => Self::Minute,
+            "second" => Self::Second,
+            "microsecond" => Self::Microsecond,
+            "week" => Self::Week,
+            "quarter" => Self::Quarter,
             _ => return Err(exceptions::PyValueError::new_err("invalid frame")),
         };
-        Ok(Self(frame))
+        Ok(frame)
     }
 }
 
 impl Frame {
     fn duration(self) -> RelativeDelta {
-        self.0
+        match self {
+            Frame::Year => RelativeDelta::with_years(1).new(),
+            Frame::Month => RelativeDelta::with_months(1).new(),
+            Frame::Day => RelativeDelta::with_days(1).new(),
+            Frame::Hour => RelativeDelta::with_hours(1).new(),
+            Frame::Minute => RelativeDelta::with_minutes(1).new(),
+            Frame::Second => RelativeDelta::with_seconds(1).new(),
+            Frame::Microsecond => RelativeDelta::with_nanoseconds(1000).new(),
+            Frame::Week => RelativeDelta::with_days(7).new(),
+            Frame::Quarter => RelativeDelta::with_months(3).new(),
+        }
     }
 }
 
