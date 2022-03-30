@@ -765,7 +765,7 @@ impl AtomicClock {
         if let Some(second) = second {
             obj.datetime = obj
                 .datetime
-                .with_minute(second)
+                .with_second(second)
                 .ok_or_else(|| exceptions::PyValueError::new_err("invalid second"))?;
         }
 
