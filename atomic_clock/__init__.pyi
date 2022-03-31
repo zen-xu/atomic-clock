@@ -192,8 +192,8 @@ class AtomicClock:
         frame: Literal[
             "year", "month", "day", "hour", "minute", "second", "microsecond"
         ],
-        start: AtomicClock,
-        end: AtomicClock | None = None,
+        start: AtomicClock | dt.datetime,
+        end: AtomicClock | dt.datetime | None = None,
         *,
         tz: str | dt.tzinfo | Tz | None = None,
         limit: int | None = None,

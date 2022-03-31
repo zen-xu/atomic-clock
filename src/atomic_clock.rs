@@ -252,12 +252,14 @@ impl AtomicClock {
     fn range(
         py: Python,
         frame: Frame,
-        start: &Self,
-        end: Option<&Self>,
+        start: DateTimeLike,
+        end: Option<DateTimeLike>,
         tz: Option<TzInfo>,
         limit: Option<u64>,
     ) -> PyResult<Py<DatetimeRangeIter>> {
+        let start = start.to_atomic_clock()?;
         let end_timestamp = if let Some(end) = end {
+            let end = end.to_atomic_clock()?;
             if end.timestamp() < start.timestamp() {
                 return Err(exceptions::PyValueError::new_err("end is less than start"));
             }
@@ -265,6 +267,7 @@ impl AtomicClock {
         } else {
             f64::MAX
         };
+
         let limit = limit.or(Some(u64::MAX)).unwrap();
         let start = if let Some(tz) = tz {
             AtomicClock::new(
@@ -283,11 +286,7 @@ impl AtomicClock {
         };
 
         let iter = DatetimeRangeIter {
-            current: start,
-            count: 0,
-            end_timestamp,
-            frame: frame.duration(),
-            limit,
+            generator: DatetimeRangeGenerator::new(start, end_timestamp, frame.duration(), limit),
         };
 
         Py::new(py, iter)
@@ -1226,13 +1225,43 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
     }
 }
 
-#[pyclass]
-struct DatetimeRangeIter {
+struct DatetimeRangeGenerator {
     current: AtomicClock,
     end_timestamp: f64,
     frame: RelativeDelta,
-    count: u64,
     limit: u64,
+    count: u64,
+}
+
+impl DatetimeRangeGenerator {
+    fn new(current: AtomicClock, end_timestamp: f64, frame: RelativeDelta, limit: u64) -> Self {
+        Self {
+            current,
+            end_timestamp,
+            frame,
+            limit,
+            count: 0,
+        }
+    }
+
+    fn next(&mut self) -> Option<AtomicClock> {
+        if self.count == self.limit {
+            return None;
+        }
+        let result = self.current.clone();
+        if self.current.timestamp() <= self.end_timestamp {
+            self.count += 1;
+            self.current.datetime = self.current.datetime + self.frame;
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
+#[pyclass]
+struct DatetimeRangeIter {
+    generator: DatetimeRangeGenerator,
 }
 
 #[pymethods]
@@ -1242,17 +1271,7 @@ impl DatetimeRangeIter {
     }
 
     fn __next__(mut slf: PyRefMut<Self>) -> Option<AtomicClock> {
-        if slf.count == slf.limit {
-            return None;
-        }
-        let result = slf.current.clone();
-        if slf.current.timestamp() <= slf.end_timestamp {
-            slf.count += 1;
-            slf.current.datetime = slf.current.datetime + slf.frame;
-            Some(result)
-        } else {
-            None
-        }
+        slf.generator.next()
     }
 }
 
@@ -1307,6 +1326,15 @@ impl Frame {
 enum DateTimeLike<'p> {
     AtomicClock(AtomicClock),
     PyDateTime(&'p PyDateTime),
+}
+
+impl DateTimeLike<'_> {
+    fn to_atomic_clock(&self) -> PyResult<AtomicClock> {
+        match self {
+            DateTimeLike::AtomicClock(dt) => Ok(dt.clone()),
+            DateTimeLike::PyDateTime(dt) => AtomicClock::fromdatetime(dt.py(), dt, None),
+        }
+    }
 }
 
 #[pyclass(name = "RelativeDelta")]
