@@ -6,6 +6,7 @@ from enum import IntEnum
 from time import struct_time
 from typing import Any
 from typing import Generator
+from typing import Iterable
 from typing import Literal
 from typing import Optional
 from typing import Tuple
@@ -235,6 +236,68 @@ class AtomicClock:
             ...
             <AtomicClock [2013-05-05T12:30:00+00:00]>
             <AtomicClock [2013-05-05T13:30:00+00:00]>
+        """
+    @staticmethod
+    def span_range(
+        frame: Literal[
+            "year",
+            "month",
+            "day",
+            "hour",
+            "minute",
+            "second",
+        ],
+        start: AtomicClock | dt.datetime,
+        end: AtomicClock | dt.datetime,
+        *,
+        tz: str | dt.tzinfo | Tz | None = None,
+        limit: int | None = None,
+        bounds: Literal["[]", "()", "[)", "(]"] = "[)",
+        exact: bool = False,
+    ) -> Iterable[Tuple[AtomicClock, AtomicClock]]:
+        """Returns an iterator of tuples, each :class:`AtomicClock <atomic_clock.AtomicClock>` objects,
+        representing a series of timespans between two inputs.
+
+        :param frame: The timeframe.  Can be any ``datetime`` property (day, hour, minute...).
+        :param start: A datetime expression, the start of the range.
+        :param end: (optional) A datetime expression, the end of the range.
+        :param tz: (optional) A :ref:`timezone expression <tz-expr>`.  Defaults to
+            ``start``'s timezone, or UTC if ``start`` is naive.
+        :param limit: (optional) A maximum number of tuples to return.
+        :param bounds: (optional) a ``str`` of either '()', '(]', '[)', or '[]' that specifies
+            whether to include or exclude the start and end values in each span in the range. '(' excludes
+            the start, '[' includes the start, ')' excludes the end, and ']' includes the end.
+            If the bounds are not specified, the default bound '[)' is used.
+        :param exact: (optional) whether to have the first timespan start exactly
+            at the time specified by ``start`` and the final span truncated
+            so as not to extend beyond ``end``.
+
+        **NOTE**: The ``end`` or ``limit`` must be provided.  Call with ``end`` alone to
+        return the entire range.  Call with ``limit`` alone to return a maximum # of results from
+        the start.  Call with both to cap a range at a maximum # of results.
+
+        **NOTE**: ``tz`` internally **replaces** the timezones of both ``start`` and ``end`` before
+        iterating.  As such, either call with naive objects and ``tz``, or aware objects from the
+        same timezone and no ``tz``.
+
+        Supported frame values: year, quarter, month, week, day, hour, minute, second.
+
+        Recognized datetime expressions:
+            - An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
+            - A ``datetime`` object.
+
+        Usage:
+            >>> start = datetime(2013, 5, 5, 12, 30)
+            >>> end = datetime(2013, 5, 5, 17, 15)
+            >>> for r in atomic_clock.AtomicClock.span_range('hour', start, end):
+            ...     print(r)
+            ...
+            (<AtomicClock [2013-05-05T12:00:00+00:00]>, <AtomicClock [2013-05-05T12:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T13:00:00+00:00]>, <AtomicClock [2013-05-05T13:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T14:00:00+00:00]>, <AtomicClock [2013-05-05T14:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T15:00:00+00:00]>, <AtomicClock [2013-05-05T15:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T16:00:00+00:00]>, <AtomicClock [2013-05-05T16:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T17:00:00+00:00]>, <AtomicClock [2013-05-05T17:59:59.999999+00:00]>)
         """
     def date(self) -> dt.date:
         """Returns a ``date`` object with the same year, month and day.

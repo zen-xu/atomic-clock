@@ -143,7 +143,7 @@ impl Tz {
     }
 }
 
-#[derive(FromPyObject)]
+#[derive(FromPyObject, Clone)]
 pub enum TzInfo<'p> {
     String(String),
     AtomicClockTz(Tz),

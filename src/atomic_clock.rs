@@ -282,13 +282,78 @@ impl AtomicClock {
                 tz,
             )?
         } else {
-            start.clone()
+            start
         };
 
         let iter = DatetimeRangeIter {
             generator: DatetimeRangeGenerator::new(start, end_timestamp, frame.duration(), limit),
         };
 
+        Py::new(py, iter)
+    }
+
+    #[staticmethod]
+    #[args(
+        frame,
+        start,
+        end,
+        "*",
+        tz = "None",
+        limit = "None",
+        bounds = "Bounds::StartInclude",
+        exact = "false"
+    )]
+    #[pyo3(
+        text_signature = "(frame, start, end, *, tz=None, limit=None, bounds=\"[)\", exact=False)"
+    )]
+    #[allow(clippy::too_many_arguments)]
+    fn span_range(
+        py: Python,
+        frame: Frame,
+        start: DateTimeLike,
+        end: DateTimeLike,
+        tz: Option<TzInfo>,
+        limit: Option<u64>,
+        bounds: Bounds,
+        exact: bool,
+    ) -> PyResult<Py<DatetimeSpanRangeIter>> {
+        let limit = limit.or(Some(u64::MAX)).unwrap();
+        let (start, end) = if let Some(tz) = tz {
+            (
+                start.to_atomic_clock()?.replace(
+                    py,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(tz.clone()),
+                )?,
+                end.to_atomic_clock()?.replace(
+                    py,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(tz),
+                )?,
+            )
+        } else {
+            (start.to_atomic_clock()?, end.to_atomic_clock()?)
+        };
+        let start = start
+            .span(py, frame.clone(), 1, Bounds::StartInclude, exact, 1)?
+            .0;
+
+        let generator =
+            DatetimeRangeGenerator::new(start, end.timestamp(), frame.clone().duration(), limit);
+
+        let iter = DatetimeSpanRangeIter::new(generator, frame, bounds, exact, end);
         Py::new(py, iter)
     }
 }
@@ -1063,6 +1128,7 @@ impl IsoCalendarDateIter {
     }
 }
 
+#[derive(Clone)]
 enum Bounds {
     BothInclude,
     BothExclude,
@@ -1275,6 +1341,7 @@ impl DatetimeRangeIter {
     }
 }
 
+#[derive(Clone)]
 enum Frame {
     Year,
     Month,
@@ -1466,4 +1533,71 @@ fn normalization_microseconds(microseconds: i64) -> (i64, i64, i64, i64, i64) {
     microseconds -= seconds * 1_000_000_i64;
 
     (days, hours, minutes, seconds, microseconds)
+}
+
+#[pyclass]
+struct DatetimeSpanRangeIter {
+    generator: DatetimeRangeGenerator,
+    frame: Frame,
+    bounds: Bounds,
+    exact: bool,
+    end: AtomicClock,
+}
+
+impl DatetimeSpanRangeIter {
+    fn new(
+        generator: DatetimeRangeGenerator,
+        frame: Frame,
+        bounds: Bounds,
+        exact: bool,
+        end: AtomicClock,
+    ) -> Self {
+        Self {
+            generator,
+            frame,
+            bounds,
+            exact,
+            end,
+        }
+    }
+}
+
+#[pymethods]
+impl DatetimeSpanRangeIter {
+    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<(AtomicClock, AtomicClock)> {
+        let dt = slf.generator.next()?;
+
+        let (floor, mut ceil) = dt
+            .span(
+                slf.py(),
+                slf.frame.clone(),
+                1,
+                slf.bounds.clone(),
+                slf.exact,
+                1,
+            )
+            .unwrap();
+
+        if slf.exact && ceil.timestamp() > slf.end.timestamp() {
+            if floor.timestamp() == slf.end.timestamp()
+                || floor
+                    .shift(0, 0, 0, 0, 0, 0, -1, 0, 0, None)
+                    .unwrap()
+                    .timestamp()
+                    == slf.end.timestamp()
+            {
+                return None;
+            }
+
+            ceil = slf.end.clone();
+            if matches!(&slf.bounds, Bounds::BothExclude | Bounds::StartInclude) {
+                ceil = ceil.shift(0, 0, 0, 0, 0, 0, -1, 0, 0, None).unwrap()
+            }
+        }
+        Some((floor, ceil))
+    }
 }
