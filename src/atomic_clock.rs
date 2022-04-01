@@ -512,40 +512,16 @@ impl AtomicClock {
             DateTimeOrDeltaLike::DateTimeLike(datetime) => match datetime {
                 DateTimeLike::AtomicClock(datetime) => {
                     let duration = self.datetime - datetime.datetime;
-                    let (days, hours, minutes, seconds, microseconds) =
-                        normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
-                    let delta = PyRelativeDelta::new(
-                        0,
-                        0,
-                        days,
-                        hours,
-                        minutes,
-                        seconds,
-                        microseconds,
-                        0,
-                        0,
-                        None,
-                    )?;
-                    Ok(Py::new(py, delta)?.to_object(py))
+                    let delta =
+                        PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)?;
+                    Ok(delta.into())
                 }
                 DateTimeLike::PyDateTime(datetime) => {
                     let datetime = AtomicClock::fromdatetime(datetime.py(), datetime, None)?;
                     let duration = self.datetime - datetime.datetime;
-                    let (days, hours, minutes, seconds, microseconds) =
-                        normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
-                    let delta = PyRelativeDelta::new(
-                        0,
-                        0,
-                        days,
-                        hours,
-                        minutes,
-                        seconds,
-                        microseconds,
-                        0,
-                        0,
-                        None,
-                    )?;
-                    Ok(Py::new(py, delta)?.to_object(py))
+                    let delta =
+                        PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)?;
+                    Ok(delta.into())
                 }
             },
             DateTimeOrDeltaLike::DeltaLike(delta) => match delta {
@@ -577,42 +553,16 @@ impl AtomicClock {
             },
         }
     }
-    fn __rsub__(&self, datetime: DateTimeLike) -> PyResult<PyRelativeDelta> {
+    fn __rsub__<'p>(&self, py: Python<'p>, datetime: DateTimeLike) -> PyResult<&'p PyDelta> {
         match datetime {
             DateTimeLike::AtomicClock(datetime) => {
                 let duration = datetime.datetime - self.datetime;
-                let (days, hours, minutes, seconds, microseconds) =
-                    normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
-                PyRelativeDelta::new(
-                    0,
-                    0,
-                    days,
-                    hours,
-                    minutes,
-                    seconds,
-                    microseconds,
-                    0,
-                    0,
-                    None,
-                )
+                PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)
             }
             DateTimeLike::PyDateTime(datetime) => {
                 let datetime = AtomicClock::fromdatetime(datetime.py(), datetime, None)?;
                 let duration = datetime.datetime - self.datetime;
-                let (days, hours, minutes, seconds, microseconds) =
-                    normalization_microseconds(duration.num_microseconds().ok_or(0).unwrap());
-                PyRelativeDelta::new(
-                    0,
-                    0,
-                    days,
-                    hours,
-                    minutes,
-                    seconds,
-                    microseconds,
-                    0,
-                    0,
-                    None,
-                )
+                PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)
             }
         }
     }
@@ -1593,23 +1543,6 @@ enum DeltaLike<'p> {
 enum DateTimeOrDeltaLike<'p> {
     DateTimeLike(DateTimeLike<'p>),
     DeltaLike(DeltaLike<'p>),
-}
-
-fn normalization_microseconds(microseconds: i64) -> (i64, i64, i64, i64, i64) {
-    let mut microseconds = microseconds;
-    let days = microseconds / (24_i64 * 60_i64 * 60_i64 * 1_000_000_i64);
-    microseconds -= days * (24_i64 * 60_i64 * 60_i64 * 1_000_000_i64);
-
-    let hours = microseconds / (60_i64 * 60_i64 * 1_000_000_i64);
-    microseconds -= hours * (60_i64 * 60_i64 * 1_000_000_i64);
-
-    let minutes = microseconds / (60_i64 * 1_000_000_i64);
-    microseconds -= minutes * (60_i64 * 1_000_000_i64);
-
-    let seconds = microseconds / 1_000_000_i64;
-    microseconds -= seconds * 1_000_000_i64;
-
-    (days, hours, minutes, seconds, microseconds)
 }
 
 #[pyclass]
