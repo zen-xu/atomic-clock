@@ -356,6 +356,83 @@ impl AtomicClock {
         let iter = DatetimeSpanRangeIter::new(generator, frame, bounds, exact, end);
         Py::new(py, iter)
     }
+
+    #[staticmethod]
+    #[args(
+        frame,
+        start,
+        end,
+        "*",
+        interval = "1",
+        tz = "None",
+        limit = "None",
+        bounds = "Bounds::StartInclude",
+        exact = "false"
+    )]
+    #[pyo3(
+        text_signature = "(frame, start, end, *, interval=1, tz=None, limit=None, bounds=\"[)\", exact=False)"
+    )]
+    #[allow(clippy::too_many_arguments)]
+    fn interval(
+        py: Python,
+        frame: Frame,
+        start: DateTimeLike,
+        end: DateTimeLike,
+        interval: u64,
+        tz: Option<TzInfo>,
+        limit: Option<u64>,
+        bounds: Bounds,
+        exact: bool,
+    ) -> PyResult<Py<DatetimeSpanRangeIter>> {
+        if interval < 1 {
+            return Err(exceptions::PyValueError::new_err(
+                "interval has to be a positive int",
+            ));
+        }
+
+        let limit = limit.or(Some(u64::MAX)).unwrap();
+        let (start, end) = if let Some(tz) = tz {
+            (
+                start.to_atomic_clock()?.replace(
+                    py,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(tz.clone()),
+                )?,
+                end.to_atomic_clock()?.replace(
+                    py,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(tz),
+                )?,
+            )
+        } else {
+            (start.to_atomic_clock()?, end.to_atomic_clock()?)
+        };
+        let start = start
+            .span(py, frame.clone(), 1, Bounds::StartInclude, exact, 1)?
+            .0;
+
+        let generator = DatetimeRangeGenerator::new(
+            start,
+            end.timestamp(),
+            frame.clone().duration() * interval as f64,
+            limit,
+        );
+
+        let iter = DatetimeSpanRangeIter::new(generator, frame, bounds, exact, end);
+        Py::new(py, iter)
+    }
 }
 
 // Protocols

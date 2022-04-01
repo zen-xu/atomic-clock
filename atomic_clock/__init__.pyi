@@ -299,6 +299,57 @@ class AtomicClock:
             (<AtomicClock [2013-05-05T16:00:00+00:00]>, <AtomicClock [2013-05-05T16:59:59.999999+00:00]>)
             (<AtomicClock [2013-05-05T17:00:00+00:00]>, <AtomicClock [2013-05-05T17:59:59.999999+00:00]>)
         """
+    @staticmethod
+    def interval(
+        frame: Literal[
+            "year",
+            "month",
+            "day",
+            "hour",
+            "minute",
+            "second",
+        ],
+        start: AtomicClock | dt.datetime,
+        end: AtomicClock | dt.datetime,
+        *,
+        interval: int = 1,
+        tz: str | dt.tzinfo | Tz | None = None,
+        limit: int | None = None,
+        bounds: Literal["[]", "()", "[)", "(]"] = "[)",
+        exact: bool = False,
+    ) -> Iterable[Tuple[AtomicClock, AtomicClock]]:
+        """Returns an iterator of tuples, each :class:`AtomicClock <atomic_clock.AtomicClock>` objects,
+        representing a series of intervals between two inputs.
+
+        :param frame: The timeframe.  Can be any ``datetime`` property (day, hour, minute...).
+        :param start: A datetime expression, the start of the range.
+        :param end: (optional) A datetime expression, the end of the range.
+        :param interval: (optional) Time interval for the given time frame.
+        :param tz: (optional) A timezone expression.  Defaults to UTC.
+        :param bounds: (optional) a ``str`` of either '()', '(]', '[)', or '[]' that specifies
+            whether to include or exclude the start and end values in the intervals. '(' excludes
+            the start, '[' includes the start, ')' excludes the end, and ']' includes the end.
+            If the bounds are not specified, the default bound '[)' is used.
+        :param exact: (optional) whether to have the first timespan start exactly
+            at the time specified by ``start`` and the final interval truncated
+            so as not to extend beyond ``end``.
+
+        Supported frame values: year, quarter, month, week, day, hour, minute, second
+
+        Recognized datetime expressions:
+            - An :class:`AtomicClock <atomic_clock.AtomicClock>` object.
+            - A ``datetime`` object.
+
+        Usage:
+            >>> start = datetime(2013, 5, 5, 12, 30)
+            >>> end = datetime(2013, 5, 5, 17, 15)
+            >>> for r in atomic_clock.AtomicClock.interval('hour', start, end, interval=2):
+            ...     print(r)
+            ...
+            (<AtomicClock [2013-05-05T12:00:00+00:00]>, <AtomicClock [2013-05-05T13:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T14:00:00+00:00]>, <AtomicClock [2013-05-05T15:59:59.999999+00:00]>)
+            (<AtomicClock [2013-05-05T16:00:00+00:00]>, <AtomicClock [2013-05-05T17:59:59.999999+00:0]>)
+        """
     def date(self) -> dt.date:
         """Returns a ``date`` object with the same year, month and day.
 
