@@ -1,4 +1,5 @@
 mod atomic_clock;
+mod hybrid_tz;
 mod tz;
 
 #[macro_use]
