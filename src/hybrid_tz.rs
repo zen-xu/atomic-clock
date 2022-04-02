@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use chrono::{DateTime, Duration, FixedOffset, Offset, TimeZone, Utc};
+use chrono::{DateTime, Duration, FixedOffset, Local, Offset, TimeZone, Utc};
 use chrono_tz::{OffsetComponents, Tz};
 use pyo3::{
     exceptions,
@@ -9,6 +9,8 @@ use pyo3::{
 };
 
 lazy_static! {
+    pub(crate) static ref UTC: HybridTz = HybridTz::Timespan(Tz::UTC);
+    pub(crate) static ref LOCAL: HybridTz = HybridTz::Offset(Local::now().offset().fix());
     static ref UTC_NOW: DateTime<Utc> = Utc::now();
 }
 
