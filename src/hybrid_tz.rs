@@ -77,13 +77,21 @@ impl Display for HybridTz {
 impl FromStr for HybridTz {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(timespan) = Tz::from_str(s) {
-            Ok(Self::Timespan(timespan))
-        } else {
-            let tmp_datetime =
-                DateTime::parse_from_str(&format!("1970-01-01T00:00:00{s}"), "%Y-%m-%dT%H:%M:%S%z")
+        match s {
+            "utc" | "UTC" => Ok(*UTC),
+            "local" => Ok(*LOCAL),
+            _ => {
+                if let Ok(timespan) = Tz::from_str(s) {
+                    Ok(Self::Timespan(timespan))
+                } else {
+                    let tmp_datetime = DateTime::parse_from_str(
+                        &format!("1970-01-01T00:00:00{s}"),
+                        "%Y-%m-%dT%H:%M:%S%z",
+                    )
                     .map_err(|_| "unknown timezone")?;
-            Ok(Self::Offset(*tmp_datetime.offset()))
+                    Ok(Self::Offset(*tmp_datetime.offset()))
+                }
+            }
         }
     }
 }
