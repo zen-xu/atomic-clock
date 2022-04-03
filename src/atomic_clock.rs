@@ -166,7 +166,7 @@ impl AtomicClock {
         .and_hms_micro(0, 0, 0, 0);
 
         Ok(Self {
-            datetime: tz.from_utc_datetime(&naive),
+            datetime: tz.from_local_datetime(&naive).unwrap(),
         })
     }
 
