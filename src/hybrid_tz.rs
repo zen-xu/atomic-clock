@@ -166,16 +166,19 @@ impl<'p> PyTzLike<'p> {
             PyTzLike::String(tz) => tz.try_into().map_err(exceptions::PyValueError::new_err),
             PyTzLike::PyTz(tz) => Ok(tz.tz),
             PyTzLike::PyTzInfo(tz) => {
-                if let Some(tz_name) = tz.call_method0("tzname")?.extract::<Option<&str>>()? {
-                    Ok(tz_name
+                if let Ok(tz_name) = tz.call_method0("tzname").map(|v| v.extract::<&str>()) {
+                    Ok(tz_name?
                         .try_into()
                         .map_err(exceptions::PyValueError::new_err)?)
                 } else {
-                    let dummy_datetime = PyDateTime::new(tz.py(), 1, 1, 1, 0, 0, 0, 0, None)?;
-                    let offset = tz
-                        .call_method("utcoffset", (dummy_datetime,), None)?
-                        .getattr("seconds")?;
-                    let offset = FixedOffset::east(offset.extract::<i32>()?);
+                    let dummy_datetime = PyDateTime::new(tz.py(), 1970, 1, 1, 0, 0, 0, 0, None)?;
+                    let offset = dummy_datetime
+                        .call_method1("now", (tz,))?
+                        .call_method0("utcoffset")?
+                        .getattr("seconds")?
+                        .extract::<i32>()?;
+
+                    let offset = FixedOffset::east(offset);
                     Ok(HybridTz::Offset(offset))
                 }
             }
