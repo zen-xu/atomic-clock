@@ -173,4 +173,12 @@ impl<'p> PyTzLike<'p> {
             }
         }
     }
+
+    pub fn utc() -> Self {
+        PyTzLike::PyTz(PyTz::new(*UTC))
+    }
+
+    pub fn local() -> Self {
+        PyTzLike::PyTz(PyTz::new(*LOCAL))
+    }
 }
