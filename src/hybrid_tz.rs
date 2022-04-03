@@ -5,6 +5,7 @@ use chrono_tz::{OffsetComponents, Tz};
 use pyo3::{
     exceptions,
     prelude::*,
+    pyclass::CompareOp,
     types::{PyDateTime, PyDelta, PyTzInfo},
 };
 
@@ -150,6 +151,25 @@ impl PyTz {
 
     fn __str__(&self) -> String {
         self.tz.to_string()
+    }
+
+    fn __richcmp__(&self, py_tz: PyTz, op: CompareOp) -> PyResult<bool> {
+        match op {
+            CompareOp::Eq => match (self.tz, py_tz.tz) {
+                (HybridTz::Offset(l), HybridTz::Offset(r)) => Ok(l == r),
+                (HybridTz::Offset(l), HybridTz::Timespan(r)) => {
+                    Ok(l == UTC_NOW.with_timezone(&r).offset().fix())
+                }
+                (HybridTz::Timespan(l), HybridTz::Offset(r)) => {
+                    Ok(UTC_NOW.with_timezone(&l).offset().fix() == r)
+                }
+                (HybridTz::Timespan(l), HybridTz::Timespan(r)) => Ok(l == r),
+            },
+            CompareOp::Ne => Ok(!(self.__richcmp__(py_tz, CompareOp::Eq)?)),
+            _ => Err(exceptions::PyTypeError::new_err(
+                "only support op '==' and '!='",
+            )),
+        }
     }
 }
 
