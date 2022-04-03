@@ -62,7 +62,7 @@ class AtomicClock:
         minute: int = 0,
         second: int = 0,
         microsecond: int = 0,
-        tzinfo: str | dt.tzinfo | Tz = "local",
+        tzinfo: str | dt.tzinfo | Tz = "UTC",
     ) -> None: ...
     @staticmethod
     def now(tzinfo: str | dt.tzinfo | Tz = "local") -> AtomicClock:

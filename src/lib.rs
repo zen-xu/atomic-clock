@@ -1,6 +1,5 @@
 mod atomic_clock;
 mod hybrid_tz;
-mod tz;
 
 #[macro_use]
 extern crate lazy_static;
@@ -15,7 +14,6 @@ use atomic_clock::{get, now, utcnow, AtomicClock, PyRelativeDelta};
 fn _atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AtomicClock>()?;
     m.add_class::<PyRelativeDelta>()?;
-    //m.add_class::<Tz>()?;
     m.add_class::<PyTz>()?;
     m.add_function(wrap_pyfunction!(get, m)?)?;
     m.add_function(wrap_pyfunction!(now, m)?)?;

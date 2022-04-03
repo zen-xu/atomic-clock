@@ -19,27 +19,18 @@ use rust_decimal::{
     Decimal,
 };
 
-use crate::tz::{Tz, TzInfo};
+use crate::hybrid_tz::{HybridTz, PyTz, PyTzLike, UTC};
 
 const MIN_ORDINAL: i64 = 1;
 const MAX_ORDINAL: i64 = 3652059;
 
-lazy_static! {
-    static ref UTC_TZ: Tz = {
-        let now = Utc::now();
-        let offset = now.offset().fix();
-        Tz::build(offset, "UTC".to_string(), None)
-    };
-}
-
 #[pyclass(subclass)]
 #[pyo3(
-    text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"local\")"
+    text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"utc\")"
 )]
 #[derive(Clone)]
 pub struct AtomicClock {
-    datetime: DateTime<Tz>,
-    tz: Tz,
+    datetime: DateTime<HybridTz>,
 }
 
 // Constructors
@@ -51,11 +42,10 @@ impl AtomicClock {
         minute = "0",
         second = "0",
         microsecond = "0",
-        tzinfo = "TzInfo::String(String::from(\"UTC\"))"
+        tzinfo = "PyTzLike::utc()"
     )]
     #[allow(clippy::too_many_arguments)]
     fn new(
-        py: Python,
         year: i32,
         month: u32,
         day: u32,
@@ -63,9 +53,10 @@ impl AtomicClock {
         minute: u32,
         second: u32,
         microsecond: u32,
-        tzinfo: TzInfo,
+        tzinfo: PyTzLike,
     ) -> PyResult<Self> {
-        let tz = Tz::new(py, tzinfo)?;
+        let tz = tzinfo.try_to_tz()?;
+
         let datetime =
             tz.ymd_opt(year, month, day)
                 .and_hms_micro_opt(hour, minute, second, microsecond);
@@ -76,35 +67,31 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: datetime.unwrap(),
-            tz,
         })
     }
 
     #[staticmethod]
-    #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
+    #[args(tzinfo = "PyTzLike::local()")]
     #[pyo3(text_signature = "(tzinfo = \"local\")")]
-    fn now(py: Python, tzinfo: TzInfo) -> PyResult<Self> {
+    fn now(tzinfo: PyTzLike) -> PyResult<Self> {
+        let tz = tzinfo.try_to_tz()?;
         let now = Local::now();
-        let tz = Tz::new(py, tzinfo)?;
         let datetime = tz.from_utc_datetime(&now.naive_utc());
-        Ok(Self { datetime, tz })
+        Ok(Self { datetime })
     }
 
     #[staticmethod]
     pub fn utcnow() -> PyResult<Self> {
         let now = Utc::now();
-        let datetime = (*UTC_TZ).from_utc_datetime(&now.naive_utc());
-        Ok(Self {
-            datetime,
-            tz: (*UTC_TZ).clone(),
-        })
+        let datetime = UTC.from_utc_datetime(&now.naive_utc());
+        Ok(Self { datetime })
     }
 
     #[staticmethod]
-    #[args(tzinfo = "TzInfo::String(String::from(\"local\"))")]
+    #[args(tzinfo = "PyTzLike::local()")]
     #[pyo3(text_signature = "(timestamp, tzinfo = \"local\")")]
-    fn fromtimestamp(py: Python, timestamp: f64, tzinfo: TzInfo) -> PyResult<Self> {
-        let tz = Tz::new(py, tzinfo)?;
+    fn fromtimestamp(timestamp: f64, tzinfo: PyTzLike) -> PyResult<Self> {
+        let tz = tzinfo.try_to_tz()?;
         let mut timestamp = Decimal::from_f64(timestamp).unwrap();
         if timestamp.scale() > 0 {
             timestamp.set_scale(6).unwrap();
@@ -116,7 +103,7 @@ impl AtomicClock {
             nsecs.to_u32().unwrap(),
         ));
 
-        Ok(Self { datetime, tz })
+        Ok(Self { datetime })
     }
 
     #[staticmethod]
@@ -128,33 +115,29 @@ impl AtomicClock {
         }
         let secs = timestamp.floor();
         let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
-        let datetime = (*UTC_TZ).from_utc_datetime(&NaiveDateTime::from_timestamp(
+        let datetime = UTC.from_utc_datetime(&NaiveDateTime::from_timestamp(
             secs.to_i64().unwrap(),
             nsecs.to_u32().unwrap(),
         ));
 
-        Ok(Self {
-            datetime,
-            tz: (*UTC_TZ).clone(),
-        })
+        Ok(Self { datetime })
     }
 
     #[staticmethod]
     #[args(tzinfo = "None")]
     #[pyo3(text_signature = "(dt, tzinfo = \"None\")")]
-    fn fromdatetime(py: Python, dt: &PyDateTime, tzinfo: Option<TzInfo>) -> PyResult<Self> {
+    fn fromdatetime(dt: &PyDateTime, tzinfo: Option<PyTzLike>) -> PyResult<Self> {
         let tz = {
-            let tzinfo = if let Some(tzinfo) = tzinfo {
-                tzinfo
+            if let Some(tzinfo) = tzinfo {
+                tzinfo.try_to_tz()?
             } else {
                 let tz = dt.getattr("tzinfo")?;
                 if let Ok(tz) = tz.extract::<&PyTzInfo>() {
-                    TzInfo::Tz(tz)
+                    PyTzLike::PyTzInfo(tz).try_to_tz()?
                 } else {
-                    TzInfo::String("UTC".to_string())
+                    *UTC
                 }
-            };
-            Tz::new(py, tzinfo)?
+            }
         };
 
         let naive = NaiveDate::from_ymd(dt.get_year(), dt.get_month() as u32, dt.get_day() as u32)
@@ -167,15 +150,14 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: tz.from_local_datetime(&naive).unwrap(),
-            tz,
         })
     }
 
     #[staticmethod]
-    #[args(tzinfo = "TzInfo::String(String::from(\"UTC\"))")]
+    #[args(tzinfo = "PyTzLike::utc()")]
     #[pyo3(text_signature = "(date, tzinfo = \"UTC\")")]
-    fn fromdate(py: Python, date: &PyDate, tzinfo: TzInfo) -> PyResult<Self> {
-        let tz = Tz::new(py, tzinfo)?;
+    fn fromdate(date: &PyDate, tzinfo: PyTzLike) -> PyResult<Self> {
+        let tz = tzinfo.try_to_tz()?;
         let naive = NaiveDate::from_ymd(
             date.get_year(),
             date.get_month() as u32,
@@ -185,13 +167,12 @@ impl AtomicClock {
 
         Ok(Self {
             datetime: tz.from_utc_datetime(&naive),
-            tz,
         })
     }
 
     #[staticmethod]
     #[pyo3(text_signature = "(datetime, fmt, tzinfo=None)")]
-    fn strptime(py: Python, datetime: &str, fmt: &str, tzinfo: Option<TzInfo>) -> PyResult<Self> {
+    fn strptime(datetime: &str, fmt: &str, tzinfo: Option<PyTzLike>) -> PyResult<Self> {
         use chrono::format::{parse, Parsed, StrftimeItems};
 
         let mut parsed = Parsed::new();
@@ -217,16 +198,15 @@ impl AtomicClock {
         // get tz
         let tz = {
             if let Some(tzinfo) = tzinfo {
-                Tz::new(py, tzinfo)?
+                tzinfo.try_to_tz()?
             } else {
                 let offset = datetime.offset();
-                Tz::from_offset(offset)
+                HybridTz::Offset(*offset)
             }
         };
 
         Ok(Self {
             datetime: datetime.with_timezone(&tz),
-            tz,
         })
     }
 
@@ -241,8 +221,7 @@ impl AtomicClock {
 
         let datetime = NaiveDate::from_ymd(1, 1, 1).and_hms(0, 0, 0) + Duration::days(ordinal - 1);
         Ok(Self {
-            datetime: (*UTC_TZ).from_utc_datetime(&datetime),
-            tz: (*UTC_TZ).clone(),
+            datetime: UTC.from_utc_datetime(&datetime),
         })
     }
 
@@ -254,7 +233,7 @@ impl AtomicClock {
         frame: Frame,
         start: DateTimeLike,
         end: Option<DateTimeLike>,
-        tz: Option<TzInfo>,
+        tz: Option<PyTzLike>,
         limit: Option<u64>,
     ) -> PyResult<Py<DatetimeRangeIter>> {
         let start = start.to_atomic_clock()?;
@@ -271,7 +250,6 @@ impl AtomicClock {
         let limit = limit.or(Some(u64::MAX)).unwrap();
         let start = if let Some(tz) = tz {
             AtomicClock::new(
-                py,
                 start.datetime.year(),
                 start.datetime.month(),
                 start.datetime.day(),
@@ -312,7 +290,7 @@ impl AtomicClock {
         frame: Frame,
         start: DateTimeLike,
         end: DateTimeLike,
-        tz: Option<TzInfo>,
+        tz: Option<PyTzLike>,
         limit: Option<u64>,
         bounds: Bounds,
         exact: bool,
@@ -321,7 +299,6 @@ impl AtomicClock {
         let (start, end) = if let Some(tz) = tz {
             (
                 start.to_atomic_clock()?.replace(
-                    py,
                     None,
                     None,
                     None,
@@ -332,7 +309,6 @@ impl AtomicClock {
                     Some(tz.clone()),
                 )?,
                 end.to_atomic_clock()?.replace(
-                    py,
                     None,
                     None,
                     None,
@@ -347,7 +323,7 @@ impl AtomicClock {
             (start.to_atomic_clock()?, end.to_atomic_clock()?)
         };
         let start = start
-            .span(py, frame.clone(), 1, Bounds::StartInclude, exact, 1)?
+            .span(frame.clone(), 1, Bounds::StartInclude, exact, 1)?
             .0;
 
         let generator =
@@ -379,7 +355,7 @@ impl AtomicClock {
         start: DateTimeLike,
         end: DateTimeLike,
         interval: u64,
-        tz: Option<TzInfo>,
+        tz: Option<PyTzLike>,
         limit: Option<u64>,
         bounds: Bounds,
         exact: bool,
@@ -394,7 +370,6 @@ impl AtomicClock {
         let (start, end) = if let Some(tz) = tz {
             (
                 start.to_atomic_clock()?.replace(
-                    py,
                     None,
                     None,
                     None,
@@ -405,7 +380,6 @@ impl AtomicClock {
                     Some(tz.clone()),
                 )?,
                 end.to_atomic_clock()?.replace(
-                    py,
                     None,
                     None,
                     None,
@@ -420,7 +394,7 @@ impl AtomicClock {
             (start.to_atomic_clock()?, end.to_atomic_clock()?)
         };
         let start = start
-            .span(py, frame.clone(), 1, Bounds::StartInclude, exact, 1)?
+            .span(frame.clone(), 1, Bounds::StartInclude, exact, 1)?
             .0;
 
         let generator = DatetimeRangeGenerator::new(
@@ -454,7 +428,7 @@ impl AtomicClock {
         let left_timestamp = self.timestamp();
         let right_timestamp = match datetime {
             DateTimeLike::AtomicClock(d) => d.timestamp(),
-            DateTimeLike::PyDateTime(d) => Self::fromdatetime(d.py(), d, None).unwrap().timestamp(),
+            DateTimeLike::PyDateTime(d) => Self::fromdatetime(d, None).unwrap().timestamp(),
         };
         match op {
             CompareOp::Lt => Ok(left_timestamp < right_timestamp),
@@ -517,7 +491,7 @@ impl AtomicClock {
                     Ok(delta.into())
                 }
                 DateTimeLike::PyDateTime(datetime) => {
-                    let datetime = AtomicClock::fromdatetime(datetime.py(), datetime, None)?;
+                    let datetime = AtomicClock::fromdatetime(datetime, None)?;
                     let duration = self.datetime - datetime.datetime;
                     let delta =
                         PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)?;
@@ -560,7 +534,7 @@ impl AtomicClock {
                 PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)
             }
             DateTimeLike::PyDateTime(datetime) => {
-                let datetime = AtomicClock::fromdatetime(datetime.py(), datetime, None)?;
+                let datetime = AtomicClock::fromdatetime(datetime, None)?;
                 let duration = datetime.datetime - self.datetime;
                 PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)
             }
@@ -621,7 +595,8 @@ impl AtomicClock {
 
     #[getter]
     fn tzinfo(&self, py: Python) -> PyResult<Py<PyAny>> {
-        Ok(Py::new(py, self.tz.clone())?.to_object(py))
+        let py_tz = PyTz::new(self.datetime.timezone());
+        Ok(Py::new(py, py_tz)?.to_object(py))
     }
 
     #[getter]
@@ -688,7 +663,6 @@ impl AtomicClock {
     #[pyo3(text_signature = "(frame, *, count=1, bounds=\"[)\", exact=False, week_start=0)")]
     fn span(
         &self,
-        py: Python,
         frame: Frame,
         count: i64,
         bounds: Bounds,
@@ -706,7 +680,6 @@ impl AtomicClock {
         } else {
             match frame {
                 Frame::Year => self.replace(
-                    py,
                     None,
                     Some(1),
                     Some(1),
@@ -717,7 +690,6 @@ impl AtomicClock {
                     None,
                 )?,
                 Frame::Month => self.replace(
-                    py,
                     None,
                     None,
                     Some(1),
@@ -727,50 +699,30 @@ impl AtomicClock {
                     Some(0),
                     None,
                 )?,
-                Frame::Day => self.replace(
-                    py,
-                    None,
-                    None,
-                    None,
-                    Some(0),
-                    Some(0),
-                    Some(0),
-                    Some(0),
-                    None,
-                )?,
+                Frame::Day => {
+                    self.replace(None, None, None, Some(0), Some(0), Some(0), Some(0), None)?
+                }
                 Frame::Hour => {
-                    self.replace(py, None, None, None, None, Some(0), Some(0), Some(0), None)?
+                    self.replace(None, None, None, None, Some(0), Some(0), Some(0), None)?
                 }
                 Frame::Minute => {
-                    self.replace(py, None, None, None, None, None, Some(0), Some(0), None)?
+                    self.replace(None, None, None, None, None, Some(0), Some(0), None)?
                 }
-                Frame::Second => {
-                    self.replace(py, None, None, None, None, None, None, Some(0), None)?
-                }
+                Frame::Second => self.replace(None, None, None, None, None, None, Some(0), None)?,
                 Frame::Microsecond => {
                     return Err(exceptions::PyValueError::new_err(
                         "span doesn't support frame `microsecond`",
                     ))
                 }
                 Frame::Week => {
-                    let floor = self.replace(
-                        py,
-                        None,
-                        None,
-                        None,
-                        Some(0),
-                        Some(0),
-                        Some(0),
-                        Some(0),
-                        None,
-                    )?;
+                    let floor =
+                        self.replace(None, None, None, Some(0), Some(0), Some(0), Some(0), None)?;
                     let delta = if week_start > self.isoweekday() { 7 } else { 0 };
                     let days = -(self.isoweekday() as i64 - week_start as i64) - delta;
                     floor.shift(0, 0, days, 0, 0, 0, 0, 0, 0, None)?
                 }
                 Frame::Quarter => self
                     .replace(
-                        py,
                         None,
                         None,
                         Some(1),
@@ -797,7 +749,6 @@ impl AtomicClock {
 
         let mut ceil = AtomicClock {
             datetime: floor.datetime + frame.duration() * count as f64,
-            tz: floor.tz.clone(),
         };
 
         match bounds {
@@ -818,13 +769,13 @@ impl AtomicClock {
     }
 
     #[pyo3(text_signature = "(frame)")]
-    fn floor(&self, py: Python, frame: Frame) -> PyResult<Self> {
-        Ok(self.span(py, frame, 1, Bounds::StartInclude, false, 1)?.0)
+    fn floor(&self, frame: Frame) -> PyResult<Self> {
+        Ok(self.span(frame, 1, Bounds::StartInclude, false, 1)?.0)
     }
 
     #[pyo3(text_signature = "(frame)")]
-    fn ceil(&self, py: Python, frame: Frame) -> PyResult<Self> {
-        Ok(self.span(py, frame, 1, Bounds::StartInclude, false, 1)?.1)
+    fn ceil(&self, frame: Frame) -> PyResult<Self> {
+        Ok(self.span(frame, 1, Bounds::StartInclude, false, 1)?.1)
     }
 
     fn timestamp(&self) -> f64 {
@@ -871,22 +822,34 @@ impl AtomicClock {
 
     #[args(tz = "None")]
     #[pyo3(text_signature = "(tz = None)")]
-    fn astimezone<'p>(&self, py: Python<'p>, tz: Option<TzInfo>) -> PyResult<&'p PyDateTime> {
+    fn astimezone<'p>(&self, py: Python<'p>, tz: Option<PyTzLike>) -> PyResult<&'p PyDateTime> {
         if let Some(tz) = tz {
-            Ok(self.to(py, tz)?.datetime(py))
+            Ok(self.to(tz)?.datetime(py))
         } else {
             Ok(self.datetime(py))
         }
     }
 
-    fn utcoffset<'p>(&self, py: Python<'p>) -> Option<&'p PyDelta> {
-        let dummy_datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None).unwrap();
-        Some(self.tz.utcoffset(py, dummy_datetime))
+    fn utcoffset<'p>(&self, py: Python<'p>) -> &'p PyDelta {
+        PyDelta::new(
+            py,
+            0,
+            self.datetime.timezone().fix().local_minus_utc(),
+            0,
+            true,
+        )
+        .unwrap()
     }
 
-    fn dst<'p>(&self, py: Python<'p>) -> Option<&'p PyDelta> {
-        let dummy_datetime = PyDateTime::new(py, 1, 1, 1, 1, 1, 1, 1, None).unwrap();
-        self.tz.dst(py, Some(dummy_datetime))
+    fn dst<'p>(&self, py: Python<'p>) -> &'p PyDelta {
+        PyDelta::new(
+            py,
+            0,
+            self.datetime.timezone().dst_offset().num_seconds() as i32,
+            0,
+            true,
+        )
+        .unwrap()
     }
 
     fn timetuple<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
@@ -935,7 +898,7 @@ impl AtomicClock {
     #[pyo3(text_signature = "(spec = \"T\", timespec = \"auto\")")]
     fn isoformat(&self, sep: &str, timespec: &str) -> PyResult<String> {
         let format = match timespec {
-            "auto" | "microseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.f%Z"),
+            "auto" | "microseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.f%:z"),
             "hours" => format!("%Y-%m-%d{sep}%H"),
             "minutes" => format!("%Y-%m-%d{sep}%H:%M"),
             "seconds" => format!("%Y-%m-%d{sep}%H:%M:%S"),
@@ -956,7 +919,6 @@ impl AtomicClock {
     #[allow(clippy::too_many_arguments)]
     fn replace(
         &self,
-        py: Python,
         year: Option<i32>,
         month: Option<u32>,
         day: Option<u32>,
@@ -964,7 +926,7 @@ impl AtomicClock {
         minute: Option<u32>,
         second: Option<u32>,
         microsecond: Option<u32>,
-        tzinfo: Option<TzInfo>,
+        tzinfo: Option<PyTzLike>,
     ) -> PyResult<Self> {
         let mut obj = self.clone();
 
@@ -1018,9 +980,8 @@ impl AtomicClock {
         }
 
         if let Some(tzinfo) = tzinfo {
-            let tz = Tz::new(py, tzinfo)?;
+            let tz = tzinfo.try_to_tz()?;
             obj.datetime = obj.datetime.with_timezone(&tz);
-            obj.tz = tz;
         }
 
         Ok(obj)
@@ -1089,11 +1050,10 @@ impl AtomicClock {
     }
 
     #[pyo3(text_signature = "(tzinfo)")]
-    fn to(&self, py: Python, tzinfo: TzInfo) -> PyResult<Self> {
-        let tz = Tz::new(py, tzinfo)?;
+    fn to(&self, tzinfo: PyTzLike) -> PyResult<Self> {
+        let tz = tzinfo.try_to_tz()?;
         Ok(Self {
             datetime: self.datetime.with_timezone(&tz),
-            tz,
         })
     }
 
@@ -1182,7 +1142,12 @@ impl FromPyObject<'_> for Bounds {
 }
 
 impl Bounds {
-    fn is_between(&self, dt: &DateTime<Tz>, start: &DateTime<Tz>, end: &DateTime<Tz>) -> bool {
+    fn is_between(
+        &self,
+        dt: &DateTime<HybridTz>,
+        start: &DateTime<HybridTz>,
+        end: &DateTime<HybridTz>,
+    ) -> bool {
         match self {
             Self::BothInclude => {
                 start.timestamp_nanos() <= dt.timestamp_nanos()
@@ -1204,20 +1169,20 @@ impl Bounds {
     }
 }
 
-#[pyfunction(tzinfo = "TzInfo::String(\"local\".to_string())")]
+#[pyfunction(tzinfo = "PyTzLike::String(\"local\")")]
 #[pyo3(text_signature = "(tzinfo = \"local\")")]
-pub fn now(py: Python, tzinfo: TzInfo) -> PyResult<AtomicClock> {
-    AtomicClock::now(py, tzinfo)
+pub(crate) fn now(tzinfo: PyTzLike) -> PyResult<AtomicClock> {
+    AtomicClock::now(tzinfo)
 }
 
 #[pyfunction]
-pub fn utcnow() -> PyResult<AtomicClock> {
+pub(crate) fn utcnow() -> PyResult<AtomicClock> {
     AtomicClock::utcnow()
 }
 
 #[pyfunction(py_args = "*", tzinfo = "None")]
 #[pyo3(text_signature = "(*args, tzinfo=None)")]
-pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<AtomicClock> {
+pub(crate) fn get(py_args: &PyTuple, tzinfo: Option<PyTzLike>) -> PyResult<AtomicClock> {
     let datetime = match py_args.len() {
         0 => AtomicClock::utcnow(),
         1 => {
@@ -1226,32 +1191,22 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
             if let Ok(dt) = arg.extract::<AtomicClock>() {
                 Ok(dt)
             } else if let Ok(timestamp) = arg.extract::<f64>() {
-                AtomicClock::fromtimestamp(py, timestamp, TzInfo::String("UTC".to_string()))
+                AtomicClock::fromtimestamp(timestamp, PyTzLike::utc())
             } else if let Ok(timestamp) = arg.extract::<i64>() {
-                AtomicClock::fromtimestamp(py, timestamp as f64, TzInfo::String("UTC".to_string()))
+                AtomicClock::fromtimestamp(timestamp as f64, PyTzLike::utc())
             } else if let Ok(datetime) = arg.extract::<&str>() {
-                AtomicClock::strptime(py, datetime, "%Y-%m-%dT%H:%M:%S%.f%z", None)
-                    .or_else(|_| AtomicClock::strptime(py, datetime, "%Y-%m-%dT%H:%M:%S%.f", None))
-                    .or_else(|_| AtomicClock::strptime(py, datetime, "%Y%m%dT%H%M%S%.f", None))
-                    .or_else(|_| AtomicClock::strptime(py, datetime, "%Y%m%dT%H%M%S%.f%z", None))
-            } else if let Ok(tz) = arg.extract::<TzInfo>() {
-                AtomicClock::now(py, tz)
+                AtomicClock::strptime(datetime, "%Y-%m-%dT%H:%M:%S%.f%z", None)
+                    .or_else(|_| AtomicClock::strptime(datetime, "%Y-%m-%dT%H:%M:%S%.f", None))
+                    .or_else(|_| AtomicClock::strptime(datetime, "%Y%m%dT%H%M%S%.f", None))
+                    .or_else(|_| AtomicClock::strptime(datetime, "%Y%m%dT%H%M%S%.f%z", None))
+            } else if let Ok(tz) = arg.extract::<PyTzLike>() {
+                AtomicClock::now(tz)
             } else if let Ok(datetime) = arg.extract::<&PyDateTime>() {
-                AtomicClock::fromdatetime(py, datetime, None)
+                AtomicClock::fromdatetime(datetime, None)
             } else if let Ok(date) = arg.extract::<&PyDate>() {
-                AtomicClock::fromdate(py, date, TzInfo::String("UTC".to_string()))
+                AtomicClock::fromdate(date, PyTzLike::String("UTC"))
             } else if let Ok((year, month, day)) = arg.extract::<(i32, u32, u32)>() {
-                AtomicClock::new(
-                    py,
-                    year,
-                    month,
-                    day,
-                    0,
-                    0,
-                    0,
-                    0,
-                    TzInfo::String("UTC".to_string()),
-                )
+                AtomicClock::new(year, month, day, 0, 0, 0, 0, PyTzLike::utc())
             } else {
                 Err(exceptions::PyValueError::new_err(
                     "failed to parse datetime",
@@ -1263,16 +1218,17 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
             let arg2 = &py_args[1];
 
             if let (Ok(datetime), Ok(tz)) =
-                (arg1.extract::<&PyDateTime>(), arg2.extract::<TzInfo>())
+                (arg1.extract::<&PyDateTime>(), arg2.extract::<PyTzLike>())
             {
-                AtomicClock::fromdatetime(py, datetime, Some(tz))
-            } else if let (Ok(date), Ok(tz)) = (arg1.extract::<&PyDate>(), arg2.extract::<TzInfo>())
+                AtomicClock::fromdatetime(datetime, Some(tz))
+            } else if let (Ok(date), Ok(tz)) =
+                (arg1.extract::<&PyDate>(), arg2.extract::<PyTzLike>())
             {
-                AtomicClock::fromdate(py, date, tz)
+                AtomicClock::fromdate(date, tz)
             } else if let (Ok(datetime_str), Ok(fmt_str)) =
                 (arg1.extract::<&str>(), arg2.extract::<&str>())
             {
-                AtomicClock::strptime(py, datetime_str, fmt_str, None)
+                AtomicClock::strptime(datetime_str, fmt_str, None)
             } else {
                 Err(exceptions::PyValueError::new_err(
                     "failed to parse datetime",
@@ -1290,14 +1246,13 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
             }
             let tz = {
                 if py_args.len() == 8 {
-                    py_args[7].extract::<TzInfo>()?
+                    py_args[7].extract::<PyTzLike>()?
                 } else {
-                    TzInfo::String("UTC".to_string())
+                    PyTzLike::utc()
                 }
             };
 
             AtomicClock::new(
-                py,
                 year,
                 datetime_args[0],
                 datetime_args[1],
@@ -1312,7 +1267,7 @@ pub fn get(py: Python, py_args: &PyTuple, tzinfo: Option<TzInfo>) -> PyResult<At
     }?;
 
     if let Some(tzinfo) = tzinfo {
-        Ok(datetime.to(py, tzinfo)?)
+        Ok(datetime.to(tzinfo)?)
     } else {
         Ok(datetime)
     }
@@ -1426,7 +1381,7 @@ impl DateTimeLike<'_> {
     fn to_atomic_clock(&self) -> PyResult<AtomicClock> {
         match self {
             DateTimeLike::AtomicClock(dt) => Ok(dt.clone()),
-            DateTimeLike::PyDateTime(dt) => AtomicClock::fromdatetime(dt.py(), dt, None),
+            DateTimeLike::PyDateTime(dt) => AtomicClock::fromdatetime(dt, None),
         }
     }
 }
@@ -1582,14 +1537,7 @@ impl DatetimeSpanRangeIter {
         let dt = slf.generator.next()?;
 
         let (floor, mut ceil) = dt
-            .span(
-                slf.py(),
-                slf.frame.clone(),
-                1,
-                slf.bounds.clone(),
-                slf.exact,
-                1,
-            )
+            .span(slf.frame.clone(), 1, slf.bounds.clone(), slf.exact, 1)
             .unwrap();
 
         if slf.exact && ceil.timestamp() > slf.end.timestamp() {
