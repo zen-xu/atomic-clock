@@ -153,7 +153,7 @@ pub(crate) enum PyTzLike<'p> {
 }
 
 impl<'p> PyTzLike<'p> {
-    fn try_to_tz(self) -> PyResult<HybridTz> {
+    pub fn try_to_tz(self) -> PyResult<HybridTz> {
         match self {
             PyTzLike::String(tz) => tz.try_into().map_err(exceptions::PyValueError::new_err),
             PyTzLike::PyTz(tz) => Ok(tz.tz),
