@@ -172,12 +172,10 @@ impl<'p> PyTzLike<'p> {
                         .map_err(exceptions::PyValueError::new_err)?)
                 } else {
                     let dummy_datetime = PyDateTime::new(tz.py(), 1970, 1, 1, 0, 0, 0, 0, None)?;
-                    let offset = dummy_datetime
-                        .call_method1("now", (tz,))?
-                        .call_method0("utcoffset")?
-                        .getattr("seconds")?
-                        .extract::<i32>()?;
-
+                    let offset = tz
+                        .call_method1("utcoffset", (dummy_datetime,))?
+                        .call_method0("total_seconds")?
+                        .extract::<f64>()? as i32;
                     let offset = FixedOffset::east(offset);
                     Ok(HybridTz::Offset(offset))
                 }
