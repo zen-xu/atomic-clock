@@ -1,7 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use chrono::{DateTime, Duration, FixedOffset, Local, Offset, TimeZone, Utc};
-use chrono_tz::{OffsetComponents, Tz};
+use chrono_tz::{OffsetComponents, Tz, TzOffset};
 use pyo3::{
     exceptions,
     prelude::*,
@@ -12,7 +12,7 @@ use pyo3::{
 lazy_static! {
     pub(crate) static ref UTC: HybridTz = HybridTz::Timespan(Tz::UTC);
     pub(crate) static ref LOCAL: HybridTz = HybridTz::Offset(Local::now().offset().fix());
-    static ref UTC_NOW: DateTime<Utc> = Utc::now();
+    pub(crate) static ref UTC_NOW: DateTime<Utc> = Utc::now();
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Copy)]
@@ -30,39 +30,88 @@ impl HybridTz {
     }
 }
 
-impl Offset for HybridTz {
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum HybridTzOffset {
+    FixedOffset(FixedOffset),
+    TzOffset(TzOffset),
+}
+
+impl Offset for HybridTzOffset {
     fn fix(&self) -> FixedOffset {
         match self {
-            HybridTz::Offset(tz) => tz.fix(),
-            HybridTz::Timespan(tz) => UTC_NOW.with_timezone(tz).offset().fix(),
+            HybridTzOffset::FixedOffset(offset) => *offset,
+            HybridTzOffset::TzOffset(offset) => offset.fix(),
+        }
+    }
+}
+
+impl Display for HybridTzOffset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HybridTzOffset::FixedOffset(offset) => offset.fmt(f),
+            HybridTzOffset::TzOffset(tz_offset) => tz_offset.fmt(f),
         }
     }
 }
 
 impl TimeZone for HybridTz {
-    type Offset = HybridTz;
+    type Offset = HybridTzOffset;
 
-    fn from_offset(offset: &HybridTz) -> HybridTz {
-        *offset
+    fn from_offset(offset: &HybridTzOffset) -> Self {
+        match offset {
+            HybridTzOffset::FixedOffset(offset) => Self::Offset(FixedOffset::from_offset(offset)),
+            HybridTzOffset::TzOffset(offset) => Self::Timespan(Tz::from_offset(offset)),
+        }
     }
 
-    fn offset_from_local_date(&self, _local: &chrono::NaiveDate) -> chrono::LocalResult<HybridTz> {
-        chrono::LocalResult::Single(*self)
+    fn offset_from_local_date(
+        &self,
+        local: &chrono::NaiveDate,
+    ) -> chrono::LocalResult<HybridTzOffset> {
+        match self {
+            HybridTz::Offset(offset) => offset
+                .offset_from_local_date(local)
+                .map(HybridTzOffset::FixedOffset),
+            HybridTz::Timespan(timespan) => timespan
+                .offset_from_local_date(local)
+                .map(HybridTzOffset::TzOffset),
+        }
     }
 
     fn offset_from_local_datetime(
         &self,
-        _local: &chrono::NaiveDateTime,
-    ) -> chrono::LocalResult<HybridTz> {
-        chrono::LocalResult::Single(*self)
+        local: &chrono::NaiveDateTime,
+    ) -> chrono::LocalResult<HybridTzOffset> {
+        match self {
+            HybridTz::Offset(offset) => offset
+                .offset_from_local_datetime(local)
+                .map(HybridTzOffset::FixedOffset),
+            HybridTz::Timespan(timespan) => timespan
+                .offset_from_local_datetime(local)
+                .map(HybridTzOffset::TzOffset),
+        }
     }
 
-    fn offset_from_utc_date(&self, _utc: &chrono::NaiveDate) -> HybridTz {
-        *self
+    fn offset_from_utc_date(&self, utc: &chrono::NaiveDate) -> HybridTzOffset {
+        match self {
+            HybridTz::Offset(offset) => {
+                HybridTzOffset::FixedOffset(offset.offset_from_utc_date(utc))
+            }
+            HybridTz::Timespan(timespan) => {
+                HybridTzOffset::TzOffset(timespan.offset_from_utc_date(utc))
+            }
+        }
     }
 
-    fn offset_from_utc_datetime(&self, _utc: &chrono::NaiveDateTime) -> HybridTz {
-        *self
+    fn offset_from_utc_datetime(&self, utc: &chrono::NaiveDateTime) -> HybridTzOffset {
+        match self {
+            HybridTz::Offset(offset) => {
+                HybridTzOffset::FixedOffset(offset.offset_from_utc_datetime(utc))
+            }
+            HybridTz::Timespan(timespan) => {
+                HybridTzOffset::TzOffset(timespan.offset_from_utc_datetime(utc))
+            }
+        }
     }
 }
 
@@ -142,7 +191,16 @@ impl PyTz {
     }
 
     fn utcoffset<'p>(&self, py: Python<'p>, _dt: &'p PyDateTime) -> &'p PyDelta {
-        PyDelta::new(py, 0, self.tz.fix().local_minus_utc(), 0, true).unwrap()
+        let seconds = match self.tz {
+            HybridTz::Offset(offset) => offset.local_minus_utc(),
+            HybridTz::Timespan(timespan) => UTC_NOW
+                .with_timezone(&timespan)
+                .offset()
+                .fix()
+                .local_minus_utc(),
+        };
+
+        PyDelta::new(py, 0, seconds, 0, true).unwrap()
     }
 
     fn __repr__(&self) -> String {

@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.16.2", features = ["multiple-pymethods"] }
 chrono = "0.4"
-chrono-tz = "0.6"
+chrono-tz = { path = "vendor/chrono-tz", version = "0.6.1" }
 lazy_static = "1"
 rust_decimal = "1.22"
 relativedelta = "0.2.2"

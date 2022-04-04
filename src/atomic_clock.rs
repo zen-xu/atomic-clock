@@ -19,7 +19,7 @@ use rust_decimal::{
     Decimal,
 };
 
-use crate::hybrid_tz::{HybridTz, PyTz, PyTzLike, UTC};
+use crate::hybrid_tz::{HybridTz, PyTz, PyTzLike, UTC, UTC_NOW};
 
 const MIN_ORDINAL: i64 = 1;
 const MAX_ORDINAL: i64 = 3652059;
@@ -831,14 +831,16 @@ impl AtomicClock {
     }
 
     fn utcoffset<'p>(&self, py: Python<'p>) -> &'p PyDelta {
-        PyDelta::new(
-            py,
-            0,
-            self.datetime.timezone().fix().local_minus_utc(),
-            0,
-            true,
-        )
-        .unwrap()
+        let seconds = match self.datetime.timezone() {
+            HybridTz::Offset(offset) => offset.local_minus_utc(),
+            HybridTz::Timespan(timespan) => UTC_NOW
+                .with_timezone(&timespan)
+                .offset()
+                .fix()
+                .local_minus_utc(),
+        };
+
+        PyDelta::new(py, 0, seconds, 0, true).unwrap()
     }
 
     fn dst<'p>(&self, py: Python<'p>) -> &'p PyDelta {
