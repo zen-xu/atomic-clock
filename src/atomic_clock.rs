@@ -909,10 +909,10 @@ impl AtomicClock {
     fn isoformat(&self, sep: &str, timespec: &str) -> PyResult<String> {
         let format = match timespec {
             "auto" | "microseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.f%:z"),
-            "hours" => format!("%Y-%m-%d{sep}%H"),
-            "minutes" => format!("%Y-%m-%d{sep}%H:%M"),
-            "seconds" => format!("%Y-%m-%d{sep}%H:%M:%S"),
-            "milliseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.3f"),
+            "hours" => format!("%Y-%m-%d{sep}%H%:z"),
+            "minutes" => format!("%Y-%m-%d{sep}%H:%M%:z"),
+            "seconds" => format!("%Y-%m-%d{sep}%H:%M:%S%:z"),
+            "milliseconds" => format!("%Y-%m-%d{sep}%H:%M:%S%.3f%:z"),
             _ => return Err(exceptions::PyValueError::new_err("Unknown timespec value")),
         };
         Ok(self.datetime.format(&format).to_string())
