@@ -154,7 +154,7 @@ impl TryFrom<&str> for HybridTz {
     }
 }
 
-#[pyclass(extends=PyTzInfo, name="Tz")]
+#[pyclass(extends=PyTzInfo, name="Tz", module="atomic_clock")]
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub(crate) struct PyTz {
     tz: HybridTz,

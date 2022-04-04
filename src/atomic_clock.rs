@@ -24,7 +24,7 @@ use crate::hybrid_tz::{HybridTz, PyTz, PyTzLike, UTC, UTC_NOW};
 const MIN_ORDINAL: i64 = 1;
 const MAX_ORDINAL: i64 = 3652059;
 
-#[pyclass(subclass)]
+#[pyclass(subclass, module = "atomic_clock")]
 #[pyo3(
     text_signature = "(year, month, day, hour = 0, minute = 0, second = 0, microsecond = 0, tzinfo = \"utc\")"
 )]
@@ -1396,7 +1396,7 @@ impl DateTimeLike<'_> {
     }
 }
 
-#[pyclass(name = "RelativeDelta")]
+#[pyclass(name = "RelativeDelta", module = "atomic_clock")]
 #[pyo3(
     text_signature = "(*, years = 0, months = 0, days = 0, hours = 0, minutes = 0, seconds = 0, microseconds = 0, weeks = 0, quarters = 0)"
 )]
