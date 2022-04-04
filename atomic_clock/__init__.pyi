@@ -485,7 +485,7 @@ class AtomicClock:
         second: int | None = None,
         microsecond: int | None = None,
         tzinfo: str | dt.tzinfo | Tz | None = None,
-    ) -> None:
+    ) -> AtomicClock:
         """Returns a new :class:`AtomicClock <atomic_clock.AtomicClock>` object with attributes updated
         according to inputs.
 
