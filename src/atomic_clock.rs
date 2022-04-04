@@ -991,7 +991,7 @@ impl AtomicClock {
 
         if let Some(tzinfo) = tzinfo {
             let tz = tzinfo.try_to_tz()?;
-            obj.datetime = obj.datetime.with_timezone(&tz);
+            obj.datetime = tz.from_local_datetime(&obj.datetime.naive_local()).unwrap()
         }
 
         Ok(obj)
