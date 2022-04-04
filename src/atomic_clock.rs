@@ -421,7 +421,11 @@ impl AtomicClock {
     }
 
     fn __format__(&self, formatstr: &str) -> String {
-        self.format(formatstr)
+        if formatstr.is_empty() {
+            self.__str__()
+        } else {
+            self.format(formatstr)
+        }
     }
 
     fn __richcmp__(&self, datetime: DateTimeLike, op: CompareOp) -> PyResult<bool> {
