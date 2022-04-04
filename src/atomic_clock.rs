@@ -490,15 +490,17 @@ impl AtomicClock {
             DateTimeOrDeltaLike::DateTimeLike(datetime) => match datetime {
                 DateTimeLike::AtomicClock(datetime) => {
                     let duration = self.datetime - datetime.datetime;
+                    let (days, seconds, microseconds) = normalize_duration(duration);
                     let delta =
-                        PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)?;
+                        PyDelta::new(py, days as i32, seconds as i32, microseconds as i32, true)?;
                     Ok(delta.into())
                 }
                 DateTimeLike::PyDateTime(datetime) => {
                     let datetime = AtomicClock::fromdatetime(datetime, None)?;
                     let duration = self.datetime - datetime.datetime;
+                    let (days, seconds, microseconds) = normalize_duration(duration);
                     let delta =
-                        PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)?;
+                        PyDelta::new(py, days as i32, seconds as i32, microseconds as i32, true)?;
                     Ok(delta.into())
                 }
             },
@@ -535,12 +537,14 @@ impl AtomicClock {
         match datetime {
             DateTimeLike::AtomicClock(datetime) => {
                 let duration = datetime.datetime - self.datetime;
-                PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)
+                let (days, seconds, microseconds) = normalize_duration(duration);
+                PyDelta::new(py, days as i32, seconds as i32, microseconds as i32, true)
             }
             DateTimeLike::PyDateTime(datetime) => {
                 let datetime = AtomicClock::fromdatetime(datetime, None)?;
                 let duration = datetime.datetime - self.datetime;
-                PyDelta::new(py, 0, 0, duration.num_microseconds().unwrap() as i32, true)
+                let (days, seconds, microseconds) = normalize_duration(duration);
+                PyDelta::new(py, days as i32, seconds as i32, microseconds as i32, true)
             }
         }
     }
@@ -1564,4 +1568,15 @@ impl DatetimeSpanRangeIter {
         }
         Some((floor, ceil))
     }
+}
+
+fn normalize_duration(duration: Duration) -> (i64, i64, i64) {
+    let mut duration = duration;
+    let days = duration.num_days();
+    duration = duration - Duration::days(days);
+    let seconds = duration.num_seconds();
+    duration = duration - Duration::seconds(seconds);
+    let microseconds = duration.num_microseconds().or(Some(0)).unwrap();
+
+    (days, seconds, microseconds)
 }
