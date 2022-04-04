@@ -1059,8 +1059,8 @@ impl AtomicClock {
         })
     }
 
-    #[args(fmt = "\"%Y-%m-%d %H:%M:%S%Z\"")]
-    #[pyo3(text_signature = "(fmt = \"%Y-%m-%d %H:%M:%S%Z\")")]
+    #[args(fmt = "\"%Y-%m-%d %H:%M:%S%:z\"")]
+    #[pyo3(text_signature = "(fmt = \"%Y-%m-%d %H:%M:%S%:z\")")]
     fn format(&self, fmt: &str) -> String {
         self.datetime.format(fmt).to_string()
     }
