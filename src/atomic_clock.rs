@@ -1025,7 +1025,7 @@ impl AtomicClock {
         microseconds: i64,
         weeks: i64,
         quarters: i64,
-        weekday: Option<u32>,
+        weekday: Option<i32>,
     ) -> PyResult<Self> {
         let mut obj = self.clone();
 
@@ -1042,12 +1042,13 @@ impl AtomicClock {
 
         if let Some(weekday) = weekday {
             if !matches!(weekday, 0..=6) {
-                return Err(exceptions::PyValueError::new_err(
+                return Err(exceptions::PyIndexError::new_err(
                     "invalid weekday, valid weekday should be 0..6",
                 ));
             }
 
             let current_weekday = obj.datetime.weekday().num_days_from_monday();
+            let weekday = weekday as u32;
             if current_weekday <= weekday {
                 obj.datetime = obj.datetime + Duration::days((weekday - current_weekday) as i64)
             } else {
@@ -1421,7 +1422,7 @@ pub struct PyRelativeDelta {
     #[pyo3(get, set)]
     quarters: i64,
     #[pyo3(get, set)]
-    weekday: Option<u32>,
+    weekday: Option<i32>,
 }
 
 #[pymethods]
@@ -1451,7 +1452,7 @@ impl PyRelativeDelta {
         microseconds: i64,
         weeks: i64,
         quarters: i64,
-        weekday: Option<u32>,
+        weekday: Option<i32>,
     ) -> PyResult<Self> {
         if !matches!(weekday, Some(0..=6) | None) {
             Err(exceptions::PyValueError::new_err(
