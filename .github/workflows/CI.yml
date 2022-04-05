@@ -5,54 +5,73 @@ on:
   pull_request:
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: messense/maturin-action@v1
-      with:
-        manylinux: auto
-        command: build
-        args: --release -o dist
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: wheels
-        path: dist
+  tests:
+    name: ${{ matrix.os }} / ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [ubuntu, macos, windows]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        poetry-version: ["1.1.12"]
+      fail-fast: false
 
-  windows:
-    runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: messense/maturin-action@v1
-      with:
-        command: build
-        args: --release --no-sdist -o dist
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: wheels
-        path: dist
+      - uses: actions/checkout@v2
 
-  macos:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: messense/maturin-action@v1
-      with:
-        command: build
-        args: --release --no-sdist -o dist --universal2
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: wheels
-        path: dist
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install latest stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2.1.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      - name: Install pypi dependencies
+        run: |
+          python -m pip install --upgrade pip
+          poetry install
+
+      - name: Build Python package
+        run: poetry run maturin build --release --no-sdist -o dist --strip --interpreter python${{matrix.python_version}}
+
+      - name: List wheels
+        if: matrix.os == 'windows-latest'
+        run: dir dist\
+
+      - name: List wheels
+        if: matrix.os != 'windows-latest'
+        run: find ./dist/
+
+      - name: Install wheels
+        if: matrix.os == 'windows-latest'
+        run: poetry run pip install --find-links=dist atomic_clock
+
+      - name: Install wheels
+        if: matrix.os != 'windows-latest'
+        run: poetry run pip install dist/atomic_clock*.whl
+
+      - name: Do test
+        run: poetry run pytest
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
 
   release:
     name: Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [ macos, windows, linux ]
+    needs: [tests]
     steps:
       - uses: actions/download-artifact@v2
         with:

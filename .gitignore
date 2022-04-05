@@ -70,6 +70,3 @@ docs/_build/
 
 # Pyenv
 .python-version
-
-# poetry
-poetry.lock
