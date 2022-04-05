@@ -329,7 +329,7 @@ impl AtomicClock {
         let generator =
             DatetimeRangeGenerator::new(start, end.timestamp(), frame.clone().duration(), limit);
 
-        let iter = DatetimeSpanRangeIter::new(generator, frame, bounds, exact, end);
+        let iter = DatetimeSpanRangeIter::new(generator, frame, 1, bounds, exact, end);
         Py::new(py, iter)
     }
 
@@ -404,7 +404,8 @@ impl AtomicClock {
             limit,
         );
 
-        let iter = DatetimeSpanRangeIter::new(generator, frame, bounds, exact, end);
+        let iter =
+            DatetimeSpanRangeIter::new(generator, frame, interval as i64, bounds, exact, end);
         Py::new(py, iter)
     }
 }
@@ -1517,6 +1518,7 @@ enum DateTimeOrDeltaLike<'p> {
 struct DatetimeSpanRangeIter {
     generator: DatetimeRangeGenerator,
     frame: Frame,
+    interval: i64,
     bounds: Bounds,
     exact: bool,
     end: AtomicClock,
@@ -1526,6 +1528,7 @@ impl DatetimeSpanRangeIter {
     fn new(
         generator: DatetimeRangeGenerator,
         frame: Frame,
+        interval: i64,
         bounds: Bounds,
         exact: bool,
         end: AtomicClock,
@@ -1533,6 +1536,7 @@ impl DatetimeSpanRangeIter {
         Self {
             generator,
             frame,
+            interval,
             bounds,
             exact,
             end,
@@ -1550,7 +1554,13 @@ impl DatetimeSpanRangeIter {
         let dt = slf.generator.next()?;
 
         let (floor, mut ceil) = dt
-            .span(slf.frame.clone(), 1, slf.bounds.clone(), slf.exact, 1)
+            .span(
+                slf.frame.clone(),
+                slf.interval,
+                slf.bounds.clone(),
+                slf.exact,
+                1,
+            )
             .unwrap();
 
         if slf.exact && ceil.timestamp() > slf.end.timestamp() {
