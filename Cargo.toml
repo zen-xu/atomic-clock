@@ -4,10 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "⚛️ Better, Faster dates & times for Python"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "_atomic_clock"
-crate-type = ["cdylib"]
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.16.2", features = ["multiple-pymethods"] }
@@ -18,5 +17,4 @@ rust_decimal = "1.22"
 relativedelta = "0.2.2"
 
 [features]
-extension-module = ["pyo3/extension-module"]
-default = ["extension-module"]
+default = ["pyo3/extension-module"]
