@@ -3,7 +3,7 @@ max-line-length = 120
 ignore = E501, E203, W503
 per-file-ignores =
     __init__.py:F401
-    test_*.py:E221
+    tests/*.py:E221,ANN201,ANN001,ANN101,E800,SIM201,SIM202,SIM204,SIM206
     *.pyi:E302,E704,E301,W504
 exclude =
     .git
