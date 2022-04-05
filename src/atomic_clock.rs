@@ -1285,7 +1285,7 @@ pub(crate) fn get(py_args: &PyTuple, tzinfo: Option<PyTzLike>) -> PyResult<Atomi
 }
 
 struct DatetimeRangeGenerator {
-    current: AtomicClock,
+    start: AtomicClock,
     end_timestamp: f64,
     frame: RelativeDelta,
     limit: u64,
@@ -1293,9 +1293,9 @@ struct DatetimeRangeGenerator {
 }
 
 impl DatetimeRangeGenerator {
-    fn new(current: AtomicClock, end_timestamp: f64, frame: RelativeDelta, limit: u64) -> Self {
+    fn new(start: AtomicClock, end_timestamp: f64, frame: RelativeDelta, limit: u64) -> Self {
         Self {
-            current,
+            start,
             end_timestamp,
             frame,
             limit,
@@ -1307,11 +1307,13 @@ impl DatetimeRangeGenerator {
         if self.count == self.limit {
             return None;
         }
-        let result = self.current.clone();
-        if self.current.timestamp() <= self.end_timestamp {
+        let datetime = AtomicClock {
+            datetime: self.start.datetime + self.frame * self.count as f64,
+        };
+
+        if datetime.timestamp() <= self.end_timestamp {
             self.count += 1;
-            self.current.datetime = self.current.datetime + self.frame;
-            Some(result)
+            Some(datetime)
         } else {
             None
         }
