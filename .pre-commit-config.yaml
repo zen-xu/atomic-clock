@@ -78,7 +78,7 @@ repos:
     hooks:
       - id: mypy
         pass_filenames: false
-        args: ["atomic_clock"]
+        args: ["python/atomic_clock"]
         exclude: tests/.*
 
   - repo: https://github.com/pre-commit/pre-commit

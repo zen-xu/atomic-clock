@@ -1,18 +1,3 @@
-[project]
-name = "atomic-clock"
-requires-python = ">=3.7"
-classifiers = [
-    "Development Status :: 1 - Planning",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Rust",
-]
-
 [tool.poetry]
 name = "atomic-clock"
 version = "0.1.0"

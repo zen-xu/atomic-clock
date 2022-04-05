@@ -6,11 +6,10 @@ from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 
+import atomic_clock
 import pytest
 
 from dateutil import tz
-
-import atomic_clock
 
 from .utils import assert_datetime_equality
 

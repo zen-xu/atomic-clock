@@ -11,7 +11,7 @@ use atomic_clock::{get, now, utcnow, AtomicClock, PyRelativeDelta};
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn _atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
+fn atomic_clock(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<AtomicClock>()?;
     m.add_class::<PyRelativeDelta>()?;
     m.add_class::<PyTz>()?;

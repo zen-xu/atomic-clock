@@ -2,11 +2,10 @@ import time
 
 from datetime import datetime
 
+import atomic_clock
 import pytest
 
 from dateutil import tz
-
-import atomic_clock
 
 
 @pytest.fixture(scope="class")

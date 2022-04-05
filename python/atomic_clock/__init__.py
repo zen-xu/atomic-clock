@@ -1,12 +1,12 @@
 from enum import IntEnum
 
-from _atomic_clock import AtomicClock
-from _atomic_clock import RelativeDelta
-from _atomic_clock import Tz
-from _atomic_clock import __version__
-from _atomic_clock import get
-from _atomic_clock import now
-from _atomic_clock import utcnow
+from .atomic_clock import AtomicClock
+from .atomic_clock import RelativeDelta
+from .atomic_clock import Tz
+from .atomic_clock import __version__
+from .atomic_clock import get
+from .atomic_clock import now
+from .atomic_clock import utcnow
 
 
 class Weekday(IntEnum):
