@@ -3,6 +3,7 @@ name = "atomic-clock"
 version = "0.1.0"
 edition = "2021"
 description = "⚛️ Better, Faster dates & times for Python"
+readme = "README.md"
 
 [package.metadata.maturin]
 python-source = "python"
