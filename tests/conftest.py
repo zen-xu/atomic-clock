@@ -10,7 +10,8 @@ from dateutil import tz
 
 @pytest.fixture(scope="class")
 def time_utcnow(request):
-    timestamp = time.time()
+    # make sure the timestamp precision is millisecond
+    timestamp = int(time.time() * 1e6) / 1e6
     request.cls.atomic_clock = atomic_clock.AtomicClock.fromtimestamp(timestamp, tz.UTC)
     request.cls.now = datetime.fromtimestamp(timestamp, tz.UTC)
 
