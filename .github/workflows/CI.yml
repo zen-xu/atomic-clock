@@ -40,15 +40,10 @@ jobs:
           poetry install
 
       - name: Build Python package
-        run: poetry run maturin build --release --no-sdist -o dist --strip --interpreter python${{matrix.python_version}}
+        run: poetry run maturin build --release --no-sdist -o dist --strip
 
-      - name: Install wheels
-        if: matrix.os == 'windows'
-        run: poetry run pip install --find-links=dist atomic_clock
-
-      - name: Install wheels
-        if: matrix.os != 'windows'
-        run: poetry run pip install dist/atomic_clock*.whl
+      - name: Install wheel
+        run: poetry run pip install --no-index --find-links=dist atomic_clock
 
       - name: Do test
         run: poetry run pytest
