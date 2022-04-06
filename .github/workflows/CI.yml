@@ -43,11 +43,11 @@ jobs:
         run: poetry run maturin build --release --no-sdist -o dist --strip --interpreter python${{matrix.python_version}}
 
       - name: Install wheels
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows'
         run: poetry run pip install --find-links=dist atomic_clock
 
       - name: Install wheels
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows'
         run: poetry run pip install dist/atomic_clock*.whl
 
       - name: Do test
