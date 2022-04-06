@@ -92,16 +92,14 @@ impl AtomicClock {
     #[pyo3(text_signature = "(timestamp, tzinfo = \"local\")")]
     fn fromtimestamp(timestamp: f64, tzinfo: PyTzLike) -> PyResult<Self> {
         let tz = tzinfo.try_to_tz()?;
-        let mut timestamp = Decimal::from_f64(timestamp).unwrap();
-        if timestamp.scale() > 0 {
-            timestamp.set_scale(6).unwrap();
-        }
-        let secs = timestamp.floor();
-        let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
-        let datetime = tz.from_utc_datetime(&NaiveDateTime::from_timestamp(
-            secs.to_i64().unwrap(),
-            nsecs.to_u32().unwrap(),
-        ));
+        let nano_timestamp = Decimal::from_f64(timestamp)
+            .unwrap()
+            .mul(Decimal::from_i64(1_000_000_000).unwrap())
+            .to_i64()
+            .unwrap();
+        let secs = nano_timestamp / 1_000_000_000;
+        let nsecs = nano_timestamp % 1_000_000_000;
+        let datetime = tz.from_utc_datetime(&NaiveDateTime::from_timestamp(secs, nsecs as u32));
 
         Ok(Self { datetime })
     }
@@ -109,16 +107,14 @@ impl AtomicClock {
     #[staticmethod]
     #[pyo3(text_signature = "(timestamp)")]
     fn utcfromtimestamp(timestamp: f64) -> PyResult<Self> {
-        let mut timestamp = Decimal::from_f64(timestamp).unwrap();
-        if timestamp.scale() > 0 {
-            timestamp.set_scale(6).unwrap();
-        }
-        let secs = timestamp.floor();
-        let nsecs = (timestamp - secs).mul(Decimal::from_i64(1_000_000_000).unwrap());
-        let datetime = UTC.from_utc_datetime(&NaiveDateTime::from_timestamp(
-            secs.to_i64().unwrap(),
-            nsecs.to_u32().unwrap(),
-        ));
+        let nano_timestamp = Decimal::from_f64(timestamp)
+            .unwrap()
+            .mul(Decimal::from_i64(1_000_000_000).unwrap())
+            .to_i64()
+            .unwrap();
+        let secs = nano_timestamp / 1_000_000_000;
+        let nsecs = nano_timestamp % 1_000_000_000;
+        let datetime = UTC.from_utc_datetime(&NaiveDateTime::from_timestamp(secs, nsecs as u32));
 
         Ok(Self { datetime })
     }

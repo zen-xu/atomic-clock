@@ -99,6 +99,12 @@ class TestTestArrowFactory:
         with pytest.raises(TypeError):
             atomic_clock.AtomicClock.fromtimestamp("invalid timestamp")
 
+    def test_nano_fromtimestamp(self):
+        timestamp = 1649206471.0438101
+        result = atomic_clock.AtomicClock.fromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp).replace(tzinfo=tz.tzlocal())
+        assert_datetime_equality(result, dt)
+
     def test_utcfromtimestamp(self):
 
         timestamp = time.time()
@@ -108,6 +114,12 @@ class TestTestArrowFactory:
 
         with pytest.raises(TypeError):
             atomic_clock.AtomicClock.utcfromtimestamp("invalid timestamp")
+
+    def test_nano_utcfromtimestamp(self):
+        timestamp = 1649206471.0438101
+        result = atomic_clock.AtomicClock.utcfromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp, tz=tz.UTC)
+        assert_datetime_equality(result, dt)
 
     def test_fromdatetime(self):
 
