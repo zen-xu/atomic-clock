@@ -2,26 +2,52 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
+  python-tests:
     name: ${{ matrix.os }} / ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
         os: [ubuntu, macos, windows]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
-        poetry-version: ["1.1.12"]
-      fail-fast: false
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
+        id: setup-python
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.5.1
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --with dev
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
       - name: Install latest stable Rust
         uses: actions-rs/toolchain@v1
@@ -29,44 +55,13 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2.1.0
+      - name: Load cached rust
+        uses: Swatinem/rust-cache@v2
         with:
-          poetry-version: ${{ matrix.poetry-version }}
+          key: ${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install pypi dependencies
-        run: |
-          python -m pip install --upgrade pip
-          poetry install
-
-      - name: Build Python package
-        run: poetry run maturin build --release --no-sdist -o dist --strip
-
-      - name: Install wheel
-        run: poetry run pip install --no-index --find-links=dist atomic_clock
+      - name: Build and install
+        run: poetry run maturin develop
 
       - name: Do test
         run: poetry run pytest
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: dist
-
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [tests]
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: wheels
-      - name: Publish to PyPI
-        uses: messense/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        with:
-          command: upload
-          args: --skip-existing *
